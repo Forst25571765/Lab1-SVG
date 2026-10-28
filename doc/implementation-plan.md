@@ -1,10 +1,10 @@
-# Lab1 Phase 1 实现计划
+# Lab1 实现计划
 
 ## 1. 目标和范围
 
 实现一个 TypeScript 面向对象的 SVG 命令行编辑器，提示符为 `svg>`。
 测试建议遵循课程中的 Test → Code → Refactor
-本阶段必须支持：
+本计划最终必须支持：
 
 - 文档命令：`init`、`read`、`save`、`canvas`；
 - 图形命令：`create`、`delete`、`move`、`scale`、`set`；
@@ -14,7 +14,7 @@
 - SVG 读写、缺失 ID 自动补全和规定格式的错误输出；
 - Command 模式和叶子图形/容器统一操作的 Composite 语义。
 
-`box` 属于后续插件化阶段。本阶段的 `create box` 应报告未知图形类型，不实现 `box` 插件。
+`box` 属于后续插件化步骤。本计划的 `create box` 应报告未知图形类型，不实现 `box` 插件。
 
 ## 2. 原文档是行为规范
 
@@ -30,7 +30,7 @@
 - 文档类、编辑类、显示类命令的 undo/redo 规则；
 - 所有规定错误，包括文件错误、ID 错误、非法层级、非法缩放和无文档状态；
 - `tree`、`show` 的输出格式和典型会话；
-- `box` 的阶段边界：本阶段只报告未知类型，不实现插件。
+- `box` 的扩展边界：当前步骤只报告未知类型，不实现插件。
 
 ## 3. 前置准备
 
@@ -65,11 +65,10 @@ doc/                        # 架构、过程和质量文档
 依赖方向：
 
 ```text
-cli → application → commands → domain
-                         ↓
-                       ports
-                         ↑
-                  infrastructure
+main.ts（Composition Root）
+├── cli ───────────────> application ─────> commands ─────> domain
+├── application ───────> ports
+└── infrastructure ────implements─────────> ports
 ```
 
 规则：
@@ -81,9 +80,32 @@ cli → application → commands → domain
 - `infrastructure` 通过接口实现外部技术细节；
 - 名字分派只保留在 `CommandRegistry` 和 `ShapeFactory`。
 
-## 5. 分阶段实施
+## 5. 分步骤实施
 
-### 阶段 1：项目脚手架和验收规格
+### 步骤记录文档约定
+
+每完成一个步骤，都要在 `doc/` 下建立一个以 `S` 和步骤编号开头的独立记录文件，不把多个步骤合并到同一份进度总表中。
+
+| 步骤 | 对应记录 |
+|---|---|
+| 步骤 1 | `doc/S1.md` |
+| 步骤 2 | `doc/S2.md` |
+| 步骤 3 | `doc/S3.md` |
+| 步骤 4 | `doc/S4.md` |
+| 步骤 5 | `doc/S5.md` |
+| 步骤 6 | `doc/S6.md` |
+| 步骤 7 | `doc/S7.md` |
+| 步骤 8 | `doc/S8.md` |
+
+每份步骤记录至少包含：
+
+- 本步骤新增或修改的代码、配置和文档；
+- 已实现的功能以及明确保留到后续步骤的内容；
+- 实际执行过的测试、构建或检查命令；
+- 每项检查的结果和必要的失败说明；
+- 当前 Git 提交状态，以及已经提交时的 commit hash。
+
+### 步骤 1：项目脚手架和验收规格
 
 工作内容：
 
@@ -92,7 +114,7 @@ cli → application → commands → domain
 - 把实验中的典型会话转成测试草稿；
 - 记录命令语法、成功输出和错误输出。
 - 形成 `doc/acceptance-spec.md` 和 `doc/test-draft.md`，作为后续实现的验收规格和测试设计。
-- 形成 `doc/acceptance-results.md`，记录当前阶段真实执行过的检查结果，并区分通过项和未就绪项。
+- 形成 `doc/acceptance-results.md`，记录当前步骤真实执行过的检查结果，并区分通过项和未就绪项。
 
 原文档参照：通读第 2 节通用约定、第 3 节命令总表、第 4.2 节错误信息约定和第 6 节典型会话。
 
@@ -102,7 +124,7 @@ cli → application → commands → domain
 - 测试运行器可以执行一个示例测试；
 - README 和架构文档已提交。
 
-### 阶段 2：领域模型和图形工厂
+### 步骤 2：领域模型和图形工厂
 
 工作内容：
 
@@ -123,7 +145,7 @@ cli → application → commands → domain
 - 重复 ID、未知类型和非法父容器有明确错误；
 - 领域层测试不依赖 CLI 或真实文件。
 
-### 阶段 3：Command 和历史管理
+### 步骤 3：Command 和历史管理
 
 工作内容：
 
@@ -142,7 +164,7 @@ cli → application → commands → domain
 - undo 后出现新编辑时，redo 栈清空；
 - 删除命令能恢复完整子树及原位置。
 
-### 阶段 4：层级和 z-order 操作
+### 步骤 4：层级和 z-order 操作
 
 工作内容：
 
@@ -160,7 +182,7 @@ cli → application → commands → domain
 - 顶层容器不能被非法 ungroup；
 - 容器移动时所有子孙保持相对位置。
 
-### 阶段 5：SVG 读写和文档命令
+### 步骤 5：SVG 读写和文档命令
 
 工作内容：
 
@@ -181,7 +203,7 @@ cli → application → commands → domain
 - 文件不存在和不可写时输出规定错误；
 - `save` 后执行 `undo` 会得到规定错误。
 
-### 阶段 6：CLI 解析、帮助和错误处理
+### 步骤 6：CLI 解析、帮助和错误处理
 
 工作内容：
 
@@ -200,7 +222,7 @@ cli → application → commands → domain
 - 命令失败时文档状态不改变；
 - `tree` 和 `show` 输出包含规定的几何属性。
 
-### 阶段 7：综合测试和重构
+### 步骤 7：综合测试和重构
 
 工作内容：
 
@@ -218,7 +240,7 @@ cli → application → commands → domain
 - 领域层没有 CLI 或基础设施依赖；
 - 代码中没有到处的 `switch(tag)` 或具体类型分支。
 
-### 阶段 8：文档、发布和最终验收
+### 步骤 8：文档、发布和最终验收
 
 工作内容：
 
@@ -235,7 +257,7 @@ cli → application → commands → domain
 - SVG 文件可以读回并在浏览器预览；
 - 测试、构建和代码检查全部通过；
 - `doc/README.md` 与实际代码一致；
-- 远程仓库包含分阶段提交和 `final` tag。
+- 远程仓库包含分步骤提交和 `final` tag。
 
 ## 6. 测试清单
 
@@ -302,7 +324,7 @@ docs: complete README and final self-check
 
 ## 8. Go / Pivot / No-go 条件
 
-- **Go**：当前阶段测试和构建通过，模块依赖符合规则，可以进入下一阶段；
+- **Go**：当前步骤测试和构建通过，模块依赖符合规则，可以进入下一步骤；
 - **Pivot**：XML 库、文件接口或命令参数设计不适合当前需求时，保留接口边界并替换内部实现；
 - **No-go**：基础流程图、SVG round-trip 或 undo/redo 仍然失败时，暂停新功能，先修复核心行为。
 

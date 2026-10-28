@@ -1,8 +1,8 @@
-# Lab1 Phase 1：SVG 编辑器（CLI）
+# Lab1：SVG 编辑器（CLI）
 
 ## 文档状态
 
-当前版本是项目初始化阶段的架构草案。实现过程中如果目录、依赖方向或设计模式发生变化，应在本文档的过程记录和一致性自查中更新。
+当前已完成步骤一的项目脚手架和步骤二的领域模型。实现过程中如果目录、依赖方向或设计模式发生变化，应在本文档的过程记录和一致性自查中更新。各步骤的具体记录见 [`S1.md`](./S1.md) 和 [`S2.md`](./S2.md)。
 
 原始实验文档：[`phase_cli_1.md`](<C:/Users/Lenovo/Desktop/高级软件开发技术/lab1/doc/phase_cli_1.md>)。
 
@@ -10,7 +10,9 @@
 
 - [`acceptance-spec.md`](./acceptance-spec.md)：可观察行为、命令、错误和端到端验收条件；
 - [`test-draft.md`](./test-draft.md)：按领域层、Command 层、CLI 层和 IO 层组织的测试草稿。
-- [`acceptance-results.md`](./acceptance-results.md)：当前阶段已经实际执行的检查、通过项和未就绪项。
+- [`acceptance-results.md`](./acceptance-results.md)：当前验收批次已经实际执行的检查、通过项和未就绪项。
+- [`S1.md`](./S1.md)：步骤一新增代码、功能、测试和结果。
+- [`S2.md`](./S2.md)：步骤二新增代码、功能、测试和结果。
 
 ## 架构方案
 
@@ -28,14 +30,29 @@
 | `tests` | 保存领域、命令、应用和 CLI 集成测试 |
 | `doc` | 保存架构方案、过程记录、一致性自查和质量保证说明 |
 
-### 2. 依赖方向
+### 2. 设计模式的选择
+
+#### Command
+
+- `Command`：命令接口；
+- `ConcreteCommand`：步骤三的 `CreateCommand`、`DeleteCommand`、`MoveCommand`、`ScaleCommand`、`SetCommand`；步骤四的 `GroupCommand`、`UngroupCommand`、`AddToCommand`、`FrontCommand`、`BackCommand`；
+- `Receiver`：`Document`、`Shape` 和 `Group`；
+- `Invoker`：`CommandExecutor`；
+- `Client`：CLI 解析和装配代码。
+
+具体命令负责保存参数、调用接收者和保存撤销所需的状态，图形业务规则由领域对象负责。
+
+#### Composite 语义
+
+`Shape` 作为统一抽象，叶子图形和 `Group` 都支持 `move`、`scale`、`set`、`delete`。`Group` 对子图形递归执行相应操作。
+
+### 3. 依赖方向
 
 ```text
-cli → application → commands → domain
-                         ↓
-                       ports
-                         ↑
-                  infrastructure
+main.ts（Composition Root）
+├── cli ───────────────> application ─────> commands ─────> domain
+├── application ───────> ports
+└── infrastructure ────implements─────────> ports
 ```
 
 规则：
@@ -62,22 +79,6 @@ cli → application → commands → domain
 @enduml
 ```
 
-### 3. 设计模式的选择
-
-#### Command
-
-- `Command`：命令接口；
-- `ConcreteCommand`：`MoveCommand`、`DeleteCommand`、`GroupCommand` 等；
-- `Receiver`：`SvgDocument`、`Shape` 和 `Group`；
-- `Invoker`：`CommandExecutor`；
-- `Client`：CLI 解析和装配代码。
-
-具体命令负责保存参数、调用接收者和保存撤销所需的状态，图形业务规则由领域对象负责。
-
-#### Composite 语义
-
-`Shape` 作为统一抽象，叶子图形和 `Group` 都支持 `move`、`scale`、`set`、`delete`。`Group` 对子图形递归执行相应操作。
-
 ### 4. 变化点假设
 
 | 变化点 | 当前预留 |
@@ -86,7 +87,7 @@ cli → application → commands → domain
 | 新增 CLI 命令 | 通过 `CommandRegistry` 注册具体命令 |
 | SVG 解析库或文件存储变化 | 通过 `ports` 隔离基础设施 |
 | undo/redo 策略变化 | 集中在 `CommandExecutor` 和 `CommandHistory` |
-| `box` 插件类型 | 本阶段只记录扩展边界，不实现 `box` |
+| `box` 插件类型 | 当前步骤只记录扩展边界，不实现 `box` |
 
 ### 5. 过程记录
 
@@ -96,6 +97,11 @@ cli → application → commands → domain
 - 领域模型、命令职责和依赖方向的调整；
 - 每次重构前后的测试结果；
 - 重要决策及其理由。
+
+ai 制定计划时只关注了功能划分和实现，却没关注文档中一些具体的规则，比如不同命令的具体报错
+
+ai完成一部分任务后只回复一个笼统的结果，要求其每完成一步都生成一个对应文档详细说明结果
+
 
 ### 6. 一致性自查
 
