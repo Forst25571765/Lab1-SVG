@@ -1,0 +1,14 @@
+export { Circle } from "./Circle.js";
+export { Document } from "./Document.js";
+export { DomainError } from "./errors.js";
+export { Ellipse } from "./Ellipse.js";
+export { Group } from "./Group.js";
+export { Line } from "./Line.js";
+export { Rect } from "./Rect.js";
+export { Shape } from "./Shape.js";
+export { ShapeFactory } from "./ShapeFactory.js";
+export { Text } from "./Text.js";
+export type { DomainErrorCode } from "./errors.js";
+export type { RemovedShape, ShapeParent } from "./Document.js";
+export type { ShapeSpec } from "./ShapeFactory.js";
+export type { AttributeValue, ShapeKind, ShapeOptions } from "./types.js";
