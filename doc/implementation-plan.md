@@ -3,7 +3,7 @@
 ## 1. 目标和范围
 
 实现一个 TypeScript 面向对象的 SVG 命令行编辑器，提示符为 `svg>`。
-
+测试建议遵循课程中的 Test → Code → Refactor
 本阶段必须支持：
 
 - 文档命令：`init`、`read`、`save`、`canvas`；
@@ -16,7 +16,23 @@
 
 `box` 属于后续插件化阶段。本阶段的 `create box` 应报告未知图形类型，不实现 `box` 插件。
 
-## 2. 前置准备
+## 2. 原文档是行为规范
+
+本计划负责安排实现顺序，实验原文 [phase_cli_1.md](<C:/Users/Lenovo/Desktop/高级软件开发技术/lab1/doc/phase_cli_1.md>) 负责规定最终行为。实现任何命令前，都要先查阅原文档对应章节；如果本计划与原文档出现冲突，以原文档为准，并在过程记录中说明修订原因。
+
+需要持续对照的约定包括：
+
+- `svg>` 提示符、逐行 REPL、`#` 注释和带空格参数的引号规则；
+- SVG 坐标系、唯一 ID、缺失 ID 自动补全和 warning；
+- 成功输出摘要、`error:` 前缀和命令失败时状态不改变；
+- 每个命令的精确语法、参数顺序、默认值和支持的图形类型；
+- `set` 属性白名单及各图形的几何属性；
+- 文档类、编辑类、显示类命令的 undo/redo 规则；
+- 所有规定错误，包括文件错误、ID 错误、非法层级、非法缩放和无文档状态；
+- `tree`、`show` 的输出格式和典型会话；
+- `box` 的阶段边界：本阶段只报告未知类型，不实现插件。
+
+## 3. 前置准备
 
 1. 初始化 TypeScript 项目和测试框架。
 2. 配置 `build`、`test`、`lint` 和 `cli` 脚本。
@@ -31,7 +47,7 @@
 - TypeScript 构建命令能执行；
 - 第一笔提交只包含脚手架和文档，不包含未验证的大量实现。
 
-## 3. 目标架构
+## 4. 目标架构
 
 ```text
 src/
@@ -65,7 +81,7 @@ cli → application → commands → domain
 - `infrastructure` 通过接口实现外部技术细节；
 - 名字分派只保留在 `CommandRegistry` 和 `ShapeFactory`。
 
-## 4. 分阶段实施
+## 5. 分阶段实施
 
 ### 阶段 1：项目脚手架和验收规格
 
@@ -75,6 +91,10 @@ cli → application → commands → domain
 - 建立 CLI 入口；
 - 把实验中的典型会话转成测试草稿；
 - 记录命令语法、成功输出和错误输出。
+- 形成 `doc/acceptance-spec.md` 和 `doc/test-draft.md`，作为后续实现的验收规格和测试设计。
+- 形成 `doc/acceptance-results.md`，记录当前阶段真实执行过的检查结果，并区分通过项和未就绪项。
+
+原文档参照：通读第 2 节通用约定、第 3 节命令总表、第 4.2 节错误信息约定和第 6 节典型会话。
 
 验证：
 
@@ -89,12 +109,16 @@ cli → application → commands → domain
 - 实现 `Shape` 抽象；
 - 实现 `Rect`、`Circle`、`Ellipse`、`Line`、`Text`、`Group`；
 - 实现 `Document` 和画布尺寸；
+- 实现 `init [w] [h]` 对应的文档创建逻辑：使用指定尺寸或默认的 800×600 创建空当前文档；
 - 实现唯一 ID、父子关系和 `ShapeFactory`；
 - 实现图形的几何属性和统一操作。
+
+原文档参照：第 0 节 SVG 格式、第 2 节 ID/坐标/状态约定、第 4.1 节图形参数和属性白名单、第 5 节显示属性要求。
 
 验证：
 
 - 每种图形能创建并保存正确属性；
+- `init` 能创建指定尺寸的空画布，省略尺寸时使用 800×600；
 - `Group` 能递归移动和缩放子图形；
 - 重复 ID、未知类型和非法父容器有明确错误；
 - 领域层测试不依赖 CLI 或真实文件。
@@ -107,6 +131,8 @@ cli → application → commands → domain
 - 实现 `CreateCommand`、`DeleteCommand`、`MoveCommand`、`ScaleCommand`、`SetCommand`；
 - 实现 `CommandExecutor` 和 `CommandHistory`；
 - 建立 undo 栈和 redo 栈。
+
+原文档参照：第 3 节编辑命令和撤销重做命令、第 4.2 节命令错误、第 4.3 节 undo/redo 粒度；具体命令的撤销状态按原文档逐条设计。
 
 验证：
 
@@ -125,6 +151,8 @@ cli → application → commands → domain
 - 检查容器与后代之间的非法收编；
 - 保持同级元素的相对顺序。
 
+原文档参照：第 3 节 `group`、`ungroup`、`addto`、`front`、`back`，第 4.2 节非法容器关系错误，以及第 6.1 节流程图示例。
+
 验证：
 
 - `tree` 能正确显示层级；
@@ -138,9 +166,12 @@ cli → application → commands → domain
 
 - 实现 `SvgReader` 和 `SvgWriter`；
 - 实现 `read`、`save`、`canvas`；
+- 明确 `init`、`read`、`save`、`canvas` 都属于文档命令，执行后禁止 undo/redo，直到下一条编辑命令；
 - 处理外部 SVG 缺失 ID 的自动分配和 warning；
 - 隔离真实文件系统和 XML 解析库；
 - 实现文档命令执行后禁止 undo/redo 的规则。
+
+原文档参照：第 0 节 SVG 文件格式和预览，第 3 节文档命令，第 4.2 节文件错误，第 4.3 节文档命令的历史边界，以及第 6 节 `read`/`save` 会话。
 
 验证：
 
@@ -155,10 +186,12 @@ cli → application → commands → domain
 工作内容：
 
 - 实现 `CommandParser`；
-- 支持注释行、引号参数和 `in <containerId>`；
+- 支持 `init [w] [h]`、注释行、引号参数和 `in <containerId>`；
 - 实现 `CommandRegistry`；
 - 实现 `tree`、`show`、`help`；
 - 统一输出成功摘要和 `error:` 错误。
+
+原文档参照：第 2 节输入约定，第 3 节完整命令语法，第 4.1 节参数规则，第 4.2 节完整错误表，第 5 节输出格式；实现后逐条回放第 6 节典型会话。
 
 验证：
 
@@ -175,6 +208,8 @@ cli → application → commands → domain
 - 使用内存文件系统替代真实磁盘进行大部分测试；
 - 检查依赖方向和名字分派位置；
 - 根据测试结果重构重复代码和过大的类。
+
+原文档参照：完整实验文档。测试矩阵必须覆盖命令总表、错误表、undo/redo 规则、树形输出和典型会话，不能只测试正常路径。
 
 验证：
 
@@ -202,7 +237,7 @@ cli → application → commands → domain
 - `doc/README.md` 与实际代码一致；
 - 远程仓库包含分阶段提交和 `final` tag。
 
-## 5. 测试清单
+## 6. 测试清单
 
 ### 领域层
 
@@ -246,7 +281,7 @@ redo
 save flowchart.svg
 ```
 
-## 6. Git 提交节奏
+## 7. Git 提交节奏
 
 建议按以下粒度提交：
 
@@ -265,7 +300,7 @@ docs: complete README and final self-check
 
 每次提交前运行测试和构建。发现实现方向错误时，先修正架构或测试，再继续添加功能。
 
-## 7. Go / Pivot / No-go 条件
+## 8. Go / Pivot / No-go 条件
 
 - **Go**：当前阶段测试和构建通过，模块依赖符合规则，可以进入下一阶段；
 - **Pivot**：XML 库、文件接口或命令参数设计不适合当前需求时，保留接口边界并替换内部实现；

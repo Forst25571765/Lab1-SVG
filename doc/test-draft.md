@@ -1,0 +1,217 @@
+# Lab1 Phase 1 测试草稿
+
+## 使用方式
+
+本文件是实现前的测试设计，不代表当前所有测试都已经写成 Vitest 代码。每个用例先作为红色规格，等对应模块出现后再实现为测试；通过后再重构。
+
+测试分层：
+
+1. **领域层**：测试 `Document`、`Shape`、`Group` 的状态和行为；
+2. **Command 层**：测试具体命令的执行、撤销和重做；
+3. **应用/解析层**：测试命令注册、参数解析和历史策略；
+4. **IO 层**：使用内存文件系统测试 SVG 读写；
+5. **CLI 集成层**：回放完整会话，检查最终输出和文档状态。
+
+## 1. 阶段一测试
+
+| ID | 层级 | 场景 | 预期 |
+|---|---|---|---|
+| REPL-T01 | CLI | 启动 REPL | 输出 `svg>` 并等待输入 |
+| REPL-T02 | CLI | 空行 | 不产生错误，再次输出提示符 |
+| REPL-T03 | CLI | `# comment` | 不执行命令、不改变状态 |
+| REPL-T04 | CLI | 输入未实现命令 | 输出 `error:`，程序继续等待 |
+| REPL-T05 | CLI | EOF | REPL 正常结束 |
+| REPL-T06 | 测试环境 | 运行 `npm test` | Vitest 能发现并运行测试 |
+
+当前已实现的 `framework.smoke.test.ts` 只覆盖 REPL-T06；REPL 行为测试需要在 CLI 入口稳定后补充。
+
+## 2. 领域模型测试
+
+### 2.1 文档和画布
+
+| ID | 场景 | 断言 |
+|---|---|---|
+| DOMAIN-T01 | `init` 无参数 | 空文档，尺寸为 800×600 |
+| DOMAIN-T02 | `init 400 200` | 空文档，尺寸为 400×200 |
+| DOMAIN-T03 | 初始化后添加图形 | 图形出现在根级子节点 |
+| DOMAIN-T04 | 查找不存在 ID | 返回明确的不存在结果或领域错误 |
+| DOMAIN-T05 | 重复 ID | 不允许添加第二个同 ID 对象 |
+| DOMAIN-T06 | ID 大小写 | `r1` 和 `R1` 按实验的大小写敏感约定处理 |
+
+### 2.2 六种图形
+
+| ID | 对象 | 断言 |
+|---|---|---|
+| DOMAIN-T10 | `Rect` | 保存 x、y、width、height 和可选 fill |
+| DOMAIN-T11 | `Circle` | 保存 cx、cy、r 和可选 fill |
+| DOMAIN-T12 | `Ellipse` | 保存 cx、cy、rx、ry 和可选 fill |
+| DOMAIN-T13 | `Line` | 保存 x1、y1、x2、y2 和可选 stroke |
+| DOMAIN-T14 | `Text` | 保存 x、y 和子文本内容 |
+| DOMAIN-T15 | `Group` | 可拥有有序子节点 |
+| DOMAIN-T16 | 可选属性省略 | 不把省略的 fill/stroke 强行写入模型或 SVG |
+
+### 2.3 统一图形操作
+
+| ID | 操作 | 断言 |
+|---|---|---|
+| DOMAIN-T20 | 叶子 `move` | 位置按增量改变 |
+| DOMAIN-T21 | 叶子 `scale` | 位置和尺寸按比例改变 |
+| DOMAIN-T22 | Group `move` | 所有子孙整体平移，内部相对位置不变 |
+| DOMAIN-T23 | Group `scale` | 所有子孙几何属性递归缩放 |
+| DOMAIN-T24 | `set` 合法属性 | 属性更新 |
+| DOMAIN-T25 | `set` 非法属性 | 拒绝修改并返回未知属性错误 |
+
+## 3. Command 层测试
+
+### 3.1 基础编辑命令
+
+| ID | 命令 | 测试顺序 | 断言 |
+|---|---|---|---|
+| CMD-T01 | Create | execute | 新对象出现 |
+| CMD-T02 | Create | execute → undo | 新对象被移除 |
+| CMD-T03 | Create | execute → undo → redo | 新对象再次出现 |
+| CMD-T04 | Delete | execute | 对象和子树消失 |
+| CMD-T05 | Delete | execute → undo | 原对象、父级和顺序完整恢复 |
+| CMD-T06 | Move | execute | 位置改变 |
+| CMD-T07 | Move | execute → undo | 原位置恢复 |
+| CMD-T08 | Scale | execute → undo | 所有几何属性恢复 |
+| CMD-T09 | Set | execute → undo | 旧属性值恢复 |
+
+### 3.2 历史栈
+
+| ID | 操作顺序 | 断言 |
+|---|---|---|
+| HIST-T01 | 编辑 A → 编辑 B → undo | 只撤销 B |
+| HIST-T02 | 编辑 A → undo → redo | B? 不存在；A 被重新执行 |
+| HIST-T03 | 编辑 A → undo → 新编辑 B → redo | redo 栈清空 |
+| HIST-T04 | 显示命令 → undo | 仍撤销最近编辑 |
+| HIST-T05 | 文档命令 → undo | 返回 `undo not allowed after io command` |
+| HIST-T06 | 文档命令 → 编辑 → undo | 可以撤销新的编辑 |
+| HIST-T07 | 一条 `group` 命令 → undo | 整个分组一次恢复 |
+
+## 4. 层级和顺序测试
+
+| ID | 场景 | 断言 |
+|---|---|---|
+| HIER-T01 | group 两个根级图形 | 新 Group 出现，两个图形成为子节点 |
+| HIER-T02 | group 位于不同父容器的图形 | 摘出后收入新容器，原相对顺序保持 |
+| HIER-T03 | group 容器及其后代 | 拒绝循环层级 |
+| HIER-T04 | ungroup 普通子容器 | 子节点提升到原父级，位置正确 |
+| HIER-T05 | ungroup 顶层容器 | 返回顶层容器错误 |
+| HIER-T06 | addto | 目标成为容器最后一个子节点 |
+| HIER-T07 | front | 目标成为同级最前节点 |
+| HIER-T08 | back | 目标成为同级最后节点 |
+| HIER-T09 | 任意层级操作失败 | 原树完全保持不变 |
+
+## 5. CLI 解析测试
+
+| ID | 输入 | 断言 |
+|---|---|---|
+| PARSER-T01 | `create rect r1 10 20 100 50 red` | 类型、ID、数值和颜色解析正确 |
+| PARSER-T02 | `create text t1 20 40 "My Diagram"` | 文本作为一个带空格参数 |
+| PARSER-T03 | `create rect r1 ... in node1` | `in` 子句被识别为父容器 |
+| PARSER-T04 | `# comment` | 返回注释/跳过结果 |
+| PARSER-T05 | 多余参数 | 返回错误，不执行命令 |
+| PARSER-T06 | 缺少参数 | 返回错误，不执行命令 |
+| PARSER-T07 | 未知命令 | 以 `error:` 开头，不改变状态 |
+| PARSER-T08 | 非法数字 | 以 `error:` 开头，不改变状态 |
+| PARSER-T09 | `box` | 返回规定的 unknown shape type 错误 |
+
+## 6. 文档和 SVG IO 测试
+
+### 6.1 序列化
+
+| ID | 场景 | 断言 |
+|---|---|---|
+| IO-T01 | 空 800×600 文档保存 | 根 SVG 尺寸正确 |
+| IO-T02 | 保存六种图形 | 标签、ID、属性和文本内容正确 |
+| IO-T03 | 保存嵌套 Group | `<g>` 嵌套关系和子顺序正确 |
+| IO-T04 | 可选 fill/stroke 省略 | 不产生额外属性 |
+| IO-T05 | 保存后浏览器打开 | 输出是可渲染 SVG |
+
+### 6.2 读回和 round-trip
+
+| ID | 场景 | 断言 |
+|---|---|---|
+| IO-T10 | 保存后读回 | 画布、结构、属性和顺序保持一致 |
+| IO-T11 | 外部 SVG 缺失 ID | 自动分配 ID 并打印 warning |
+| IO-T12 | 外部 SVG 含嵌套 Group | 子树正确恢复 |
+| IO-T13 | 文件不存在 | 返回 cannot read file 错误 |
+| IO-T14 | 目标不可写 | 返回 cannot write file 错误 |
+| IO-T15 | read/save 后 undo | 返回文档命令历史错误 |
+
+建议注入 `FileSystem` 和 `SvgCodec` 接口，在单元测试中使用内存实现，避免测试依赖真实路径。
+
+## 7. 显示命令测试
+
+| ID | 命令 | 断言 |
+|---|---|---|
+| VIEW-T01 | `tree` | 显示画布尺寸、根节点、几何属性和层级符号 |
+| VIEW-T02 | `tree node1` | 只显示 node1 子树 |
+| VIEW-T03 | `show r1` | 显示类型、父级和关键属性 |
+| VIEW-T04 | `help` | 包含所有命令和语法 |
+| VIEW-T05 | 显示命令后 undo | 不改变 undo 栈 |
+
+## 8. 错误原子性测试
+
+每个错误场景都要额外断言：
+
+- 图形数量不变；
+- 父子关系不变；
+- 属性不变；
+- 当前路径和画布尺寸不变；
+- undo/redo 栈没有增加错误命令。
+
+重点场景：
+
+```text
+重复 ID
+不存在的图形
+不存在或非容器的 in 目标
+未知图形类型
+非法 scale 因子
+非法 set 属性
+容器收入自己的后代
+顶层容器 ungroup
+文件不存在或不可写
+未 init/read 就执行编辑或显示命令
+```
+
+## 9. 端到端测试草稿
+
+### E2E-T01：两节点流程图
+
+回放原实验文档第 6.1 节的流程图会话，断言：
+
+1. `init` 创建 800×600 空文档；
+2. `flowchart`、`node1`、`node2` 的父子关系正确；
+3. 两个矩形和两个文字节点的属性正确；
+4. `arrow1` 位于 `flowchart` 下；
+5. `move node2 0 100` 会整体移动 node2；
+6. `undo` 恢复 node2 和其子图形的位置；
+7. `set process-label text ...` 只更新文本；
+8. `save flowchart.svg` 生成可打开文件。
+
+### E2E-T02：读写和历史边界
+
+```text
+init 400 200
+create rect r1 10 20 100 50 red
+save demo.svg
+undo
+```
+
+断言最后一条命令返回文档命令历史错误，且 `r1` 仍然存在。
+
+## 10. Test → Code → Refactor 顺序
+
+每个功能按以下步骤推进：
+
+1. 从本文件选择一个失败的测试规格；
+2. 先写测试并确认它确实失败；
+3. 实现最小领域或命令逻辑；
+4. 运行相关测试并达到绿色；
+5. 在测试保护下重构；
+6. 再运行完整测试集。
+
+当前阶段只完成了测试框架 smoke test；领域、Command、CLI 和 IO 测试应随着对应阶段逐步实现。

@@ -16,6 +16,9 @@ src/
 tests/                      # 单元测试和集成测试
 doc/README.md               # 实验要求对应的架构与过程文档
 doc/phase_cli_1.md          # Lab1 原始实验文档
+doc/acceptance-spec.md      # 命令、错误和端到端验收规格
+doc/test-draft.md           # 分层测试草稿
+doc/acceptance-results.md   # 当前阶段实测验收结果
 ```
 
 ## 实现范围

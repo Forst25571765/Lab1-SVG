@@ -6,6 +6,12 @@
 
 原始实验文档：[`phase_cli_1.md`](<C:/Users/Lenovo/Desktop/高级软件开发技术/lab1/doc/phase_cli_1.md>)。
 
+配套规格文档：
+
+- [`acceptance-spec.md`](./acceptance-spec.md)：可观察行为、命令、错误和端到端验收条件；
+- [`test-draft.md`](./test-draft.md)：按领域层、Command 层、CLI 层和 IO 层组织的测试草稿。
+- [`acceptance-results.md`](./acceptance-results.md)：当前阶段已经实际执行的检查、通过项和未就绪项。
+
 ## 架构方案
 
 ### 1. 模块划分
