@@ -106,6 +106,22 @@ export abstract class Shape {
     }
   }
 
+  public clearAttribute(attribute: string): void {
+    switch (attribute) {
+      case "fill":
+        this._fill = undefined;
+        return;
+      case "stroke":
+        this._stroke = undefined;
+        return;
+      case "stroke-width":
+        this._strokeWidth = undefined;
+        return;
+      default:
+        this.clearSpecificAttribute(attribute);
+    }
+  }
+
   public abstract move(dx: number, dy: number): void;
 
   public abstract scale(factor: number): void;
@@ -121,6 +137,10 @@ export abstract class Shape {
   protected abstract getSpecificAttribute(attribute: string): AttributeValue | undefined;
 
   protected abstract setSpecificAttribute(attribute: string, value: AttributeValue): void;
+
+  protected clearSpecificAttribute(attribute: string): void {
+    Shape.rejectUnknownAttribute(attribute);
+  }
 
   /** @internal Parent links are changed by Document and Group only. */
   public setParent(parent: Group | null): void {
