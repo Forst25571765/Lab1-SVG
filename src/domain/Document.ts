@@ -50,6 +50,10 @@ export class Document {
   }
 
   public add(shape: Shape, parent: ShapeParent = null): void {
+    this.addAt(shape, parent);
+  }
+
+  public addAt(shape: Shape, parent: ShapeParent = null, index?: number): void {
     if (shape.parent !== null) {
       throw new DomainError("shape-already-attached", "shape already has a parent");
     }
@@ -71,10 +75,12 @@ export class Document {
     }
 
     if (parentGroup === null) {
-      this._children.push(shape);
+      const insertionIndex = index ?? this._children.length;
+      this.assertInsertionIndex(insertionIndex, this._children.length);
+      this._children.splice(insertionIndex, 0, shape);
       shape.getSubtree().forEach((nestedShape) => nestedShape.setDocumentOwner(this));
     } else {
-      parentGroup.addChild(shape, this);
+      parentGroup.insertChildAt(shape, index ?? parentGroup.children.length, this);
     }
   }
 
@@ -109,6 +115,43 @@ export class Document {
     return shape instanceof Group ? shape : undefined;
   }
 
+  public requireContainer(id: string): Group {
+    const shape = this.requireShape(id);
+    if (!(shape instanceof Group)) {
+      throw notAContainer(id);
+    }
+    return shape;
+  }
+
+  public indexOf(shape: Shape): number {
+    if (this.findById(shape.id) !== shape) {
+      throw noSuchShape(shape.id);
+    }
+    return shape.parent === null
+      ? this._children.indexOf(shape)
+      : shape.parent.indexOf(shape);
+  }
+
+  public reorder(shapeOrId: Shape | string, index: number): void {
+    const shape = typeof shapeOrId === "string" ? this.requireShape(shapeOrId) : shapeOrId;
+    const currentIndex = this.indexOf(shape);
+    const siblings = shape.parent === null ? this._children : shape.parent.children;
+    this.assertInsertionIndex(index, siblings.length - 1);
+    if (currentIndex === index) {
+      return;
+    }
+
+    if (shape.parent === null) {
+      this._children.splice(currentIndex, 1);
+      this._children.splice(index, 0, shape);
+      return;
+    }
+
+    const parent = shape.parent;
+    parent.removeChild(shape, this);
+    parent.insertChildAt(shape, index, this);
+  }
+
   public remove(shapeOrId: Shape | string): RemovedShape {
     const shape = typeof shapeOrId === "string" ? this.requireShape(shapeOrId) : shapeOrId;
     const parent = shape.parent;
@@ -127,20 +170,7 @@ export class Document {
   }
 
   public restore(removed: RemovedShape): void {
-    if (removed.parent === null) {
-      if (this.findById(removed.shape.id) !== undefined) {
-        throw duplicateId(removed.shape.id);
-      }
-      this._children.splice(removed.index, 0, removed.shape);
-      removed.shape.getSubtree().forEach((shape) => shape.setDocumentOwner(this));
-      return;
-    }
-    this.add(removed.shape, removed.parent);
-    const currentIndex = removed.parent.indexOf(removed.shape);
-    if (currentIndex !== removed.index) {
-      removed.parent.removeChild(removed.shape, this);
-      removed.parent.insertChildAt(removed.shape, removed.index, this);
-    }
+    this.addAt(removed.shape, removed.parent, removed.index);
   }
 
   private resolveParent(parent: ShapeParent): Group | null {
@@ -161,5 +191,11 @@ export class Document {
       throw noSuchContainer(parent.id);
     }
     return parent;
+  }
+
+  private assertInsertionIndex(index: number, length: number): void {
+    if (!Number.isInteger(index) || index < 0 || index > length) {
+      throw new DomainError("invalid-parent", "sibling index is out of range");
+    }
   }
 }
