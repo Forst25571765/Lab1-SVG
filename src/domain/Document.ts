@@ -1,6 +1,7 @@
 import { Group } from "./Group.js";
 import { DomainError, duplicateId, noSuchContainer, noSuchShape, notAContainer } from "./errors.js";
 import { Shape, toFiniteNumber } from "./Shape.js";
+import { insertGroupChild, removeGroupChild, setShapeLocation } from "./internal/treeMutation.js";
 
 export type ShapeParent = Group | string | null | undefined;
 
@@ -13,7 +14,7 @@ export interface RemovedShape {
 export class Document {
   private _width: number;
   private _height: number;
-  private readonly _children: Shape[] = [];
+  readonly #children: Shape[] = [];
 
   public constructor(width = 800, height = 600) {
     this._width = toFiniteNumber(width, "width");
@@ -33,7 +34,7 @@ export class Document {
   }
 
   public get children(): readonly Shape[] {
-    return [...this._children];
+    return [...this.#children];
   }
 
   public get rootChildren(): readonly Shape[] {
@@ -41,12 +42,14 @@ export class Document {
   }
 
   public get size(): number {
-    return this._children.reduce((count, child) => count + child.getSubtree().length, 0);
+    return this.#children.reduce((count, child) => count + child.getSubtree().length, 0);
   }
 
   public setCanvasSize(width: number, height: number): void {
-    this._width = toFiniteNumber(width, "width");
-    this._height = toFiniteNumber(height, "height");
+    const nextWidth = toFiniteNumber(width, "width");
+    const nextHeight = toFiniteNumber(height, "height");
+    this._width = nextWidth;
+    this._height = nextHeight;
   }
 
   public add(shape: Shape, parent: ShapeParent = null): void {
@@ -65,6 +68,9 @@ export class Document {
     const incomingShapes = shape.getSubtree();
     const incomingIds = new Set<string>();
     for (const incomingShape of incomingShapes) {
+      if (incomingShape.ownerDocument !== null) {
+        throw new DomainError("shape-already-attached", "shape already belongs to a document");
+      }
       if (incomingIds.has(incomingShape.id)) {
         throw duplicateId(incomingShape.id);
       }
@@ -74,13 +80,16 @@ export class Document {
       }
     }
 
+    const siblingCount = parentGroup === null ? this.#children.length : parentGroup.children.length;
+    const insertionIndex = index ?? siblingCount;
+    this.assertInsertionIndex(insertionIndex, siblingCount);
     if (parentGroup === null) {
-      const insertionIndex = index ?? this._children.length;
-      this.assertInsertionIndex(insertionIndex, this._children.length);
-      this._children.splice(insertionIndex, 0, shape);
-      shape.getSubtree().forEach((nestedShape) => nestedShape.setDocumentOwner(this));
+      this.#children.splice(insertionIndex, 0, shape);
+      for (const nestedShape of incomingShapes) {
+        nestedShape[setShapeLocation](nestedShape.parent, this);
+      }
     } else {
-      parentGroup.insertChildAt(shape, index ?? parentGroup.children.length, this);
+      parentGroup[insertGroupChild](shape, insertionIndex);
     }
   }
 
@@ -89,7 +98,7 @@ export class Document {
   }
 
   public findById(id: string): Shape | undefined {
-    for (const child of this._children) {
+    for (const child of this.#children) {
       const found = child.getSubtree().find((shape) => shape.id === id);
       if (found !== undefined) {
         return found;
@@ -128,44 +137,42 @@ export class Document {
       throw noSuchShape(shape.id);
     }
     return shape.parent === null
-      ? this._children.indexOf(shape)
+      ? this.#children.indexOf(shape)
       : shape.parent.indexOf(shape);
   }
 
   public reorder(shapeOrId: Shape | string, index: number): void {
     const shape = typeof shapeOrId === "string" ? this.requireShape(shapeOrId) : shapeOrId;
     const currentIndex = this.indexOf(shape);
-    const siblings = shape.parent === null ? this._children : shape.parent.children;
+    const siblings = shape.parent === null ? this.#children : shape.parent.children;
     this.assertInsertionIndex(index, siblings.length - 1);
     if (currentIndex === index) {
       return;
     }
 
     if (shape.parent === null) {
-      this._children.splice(currentIndex, 1);
-      this._children.splice(index, 0, shape);
+      this.#children.splice(currentIndex, 1);
+      this.#children.splice(index, 0, shape);
       return;
     }
 
     const parent = shape.parent;
-    parent.removeChild(shape, this);
-    parent.insertChildAt(shape, index, this);
+    parent[removeGroupChild](shape);
+    parent[insertGroupChild](shape, index);
   }
 
   public remove(shapeOrId: Shape | string): RemovedShape {
     const shape = typeof shapeOrId === "string" ? this.requireShape(shapeOrId) : shapeOrId;
+    const index = this.indexOf(shape);
     const parent = shape.parent;
     if (parent === null) {
-      const index = this._children.indexOf(shape);
-      if (index < 0) {
-        throw noSuchShape(shape.id);
+      this.#children.splice(index, 1);
+      for (const nestedShape of shape.getSubtree()) {
+        nestedShape[setShapeLocation](nestedShape.parent, null);
       }
-      this._children.splice(index, 1);
-      shape.getSubtree().forEach((nestedShape) => nestedShape.setDocumentOwner(null));
       return { shape, parent: null, index };
     }
-    const index = parent.removeChild(shape, this);
-    shape.getSubtree().forEach((nestedShape) => nestedShape.setDocumentOwner(null));
+    parent[removeGroupChild](shape);
     return { shape, parent, index };
   }
 

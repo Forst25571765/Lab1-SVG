@@ -61,7 +61,7 @@ export class UngroupCommand extends StatefulCommand {
     removeChildrenFromDocument(this.document, this.children);
     this.document.addAt(this.group, this.parent, this.groupIndex);
     for (const child of this.children) {
-      this.group.addChild(child, this.document);
+      this.document.add(child, this.group);
     }
     this.markUndone();
   }

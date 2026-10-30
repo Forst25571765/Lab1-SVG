@@ -39,15 +39,22 @@ export class Text extends Shape {
     return { ...super.attributes, x: this._x, y: this._y, text: this._content };
   }
 
-  public move(dx: number, dy: number): void {
-    this._x += Shape.assertFinite(dx, "dx");
-    this._y += Shape.assertFinite(dy, "dy");
+  protected prepareMove(dx: number, dy: number): () => void {
+    const x = Shape.assertFinite(this._x + dx, "x");
+    const y = Shape.assertFinite(this._y + dy, "y");
+    return () => {
+      this._x = x;
+      this._y = y;
+    };
   }
 
-  public scale(factor: number): void {
-    const numericFactor = Shape.assertScaleFactor(factor);
-    this._x *= numericFactor;
-    this._y *= numericFactor;
+  protected prepareScale(factor: number): () => void {
+    const x = Shape.assertFinite(this._x * factor, "x");
+    const y = Shape.assertFinite(this._y * factor, "y");
+    return () => {
+      this._x = x;
+      this._y = y;
+    };
   }
 
   protected getSpecificAttribute(attribute: string): AttributeValue | undefined {

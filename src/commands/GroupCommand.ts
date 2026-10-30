@@ -43,7 +43,7 @@ export class GroupCommand extends StatefulCommand {
       }
       this.document.addAt(this.group, parent, groupIndex);
       for (const target of orderedTargets) {
-        this.group.addChild(target, this.document);
+        this.document.add(target, this.group);
       }
       this.removedTargets = removedTargets;
       this.markExecuted();

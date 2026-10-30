@@ -10,6 +10,7 @@ export class HistoryError extends Error {
 export class CommandHistory {
   private readonly undoStack: Command[] = [];
   private readonly redoStack: Command[] = [];
+  private blockedAfterDocumentCommand = false;
 
   public get undoCount(): number {
     return this.undoStack.length;
@@ -20,19 +21,26 @@ export class CommandHistory {
   }
 
   public get canUndo(): boolean {
-    return this.undoStack.length > 0;
+    return !this.blockedAfterDocumentCommand && this.undoStack.length > 0;
   }
 
   public get canRedo(): boolean {
-    return this.redoStack.length > 0;
+    return !this.blockedAfterDocumentCommand && this.redoStack.length > 0;
   }
 
   public record(command: Command): void {
     this.undoStack.push(command);
     this.redoStack.length = 0;
+    this.blockedAfterDocumentCommand = false;
+  }
+
+  public blockAfterDocumentCommand(): void {
+    this.clear();
+    this.blockedAfterDocumentCommand = true;
   }
 
   public peekUndo(): Command {
+    this.assertHistoryAllowed();
     const command = this.undoStack[this.undoStack.length - 1];
     if (command === undefined) {
       throw new HistoryError("nothing to undo");
@@ -41,6 +49,7 @@ export class CommandHistory {
   }
 
   public peekRedo(): Command {
+    this.assertHistoryAllowed();
     const command = this.redoStack[this.redoStack.length - 1];
     if (command === undefined) {
       throw new HistoryError("nothing to redo");
@@ -63,6 +72,12 @@ export class CommandHistory {
   public clear(): void {
     this.undoStack.length = 0;
     this.redoStack.length = 0;
+  }
+
+  private assertHistoryAllowed(): void {
+    if (this.blockedAfterDocumentCommand) {
+      throw new HistoryError("undo not allowed after io command");
+    }
   }
 
   private assertTop(stack: Command[], command: Command, name: string): void {

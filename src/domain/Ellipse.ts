@@ -42,17 +42,26 @@ export class Ellipse extends Shape {
     return { ...super.attributes, cx: this._cx, cy: this._cy, rx: this._rx, ry: this._ry };
   }
 
-  public move(dx: number, dy: number): void {
-    this._cx += Shape.assertFinite(dx, "dx");
-    this._cy += Shape.assertFinite(dy, "dy");
+  protected prepareMove(dx: number, dy: number): () => void {
+    const cx = Shape.assertFinite(this._cx + dx, "cx");
+    const cy = Shape.assertFinite(this._cy + dy, "cy");
+    return () => {
+      this._cx = cx;
+      this._cy = cy;
+    };
   }
 
-  public scale(factor: number): void {
-    const numericFactor = Shape.assertScaleFactor(factor);
-    this._cx *= numericFactor;
-    this._cy *= numericFactor;
-    this._rx *= numericFactor;
-    this._ry *= numericFactor;
+  protected prepareScale(factor: number): () => void {
+    const cx = Shape.assertFinite(this._cx * factor, "cx");
+    const cy = Shape.assertFinite(this._cy * factor, "cy");
+    const rx = Shape.assertFinite(this._rx * factor, "rx");
+    const ry = Shape.assertFinite(this._ry * factor, "ry");
+    return () => {
+      this._cx = cx;
+      this._cy = cy;
+      this._rx = rx;
+      this._ry = ry;
+    };
   }
 
   protected getSpecificAttribute(attribute: string): AttributeValue | undefined {

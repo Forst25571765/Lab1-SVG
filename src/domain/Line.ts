@@ -42,21 +42,30 @@ export class Line extends Shape {
     return { ...super.attributes, x1: this._x1, y1: this._y1, x2: this._x2, y2: this._y2 };
   }
 
-  public move(dx: number, dy: number): void {
-    const numericDx = Shape.assertFinite(dx, "dx");
-    const numericDy = Shape.assertFinite(dy, "dy");
-    this._x1 += numericDx;
-    this._y1 += numericDy;
-    this._x2 += numericDx;
-    this._y2 += numericDy;
+  protected prepareMove(dx: number, dy: number): () => void {
+    const x1 = Shape.assertFinite(this._x1 + dx, "x1");
+    const y1 = Shape.assertFinite(this._y1 + dy, "y1");
+    const x2 = Shape.assertFinite(this._x2 + dx, "x2");
+    const y2 = Shape.assertFinite(this._y2 + dy, "y2");
+    return () => {
+      this._x1 = x1;
+      this._y1 = y1;
+      this._x2 = x2;
+      this._y2 = y2;
+    };
   }
 
-  public scale(factor: number): void {
-    const numericFactor = Shape.assertScaleFactor(factor);
-    this._x1 *= numericFactor;
-    this._y1 *= numericFactor;
-    this._x2 *= numericFactor;
-    this._y2 *= numericFactor;
+  protected prepareScale(factor: number): () => void {
+    const x1 = Shape.assertFinite(this._x1 * factor, "x1");
+    const y1 = Shape.assertFinite(this._y1 * factor, "y1");
+    const x2 = Shape.assertFinite(this._x2 * factor, "x2");
+    const y2 = Shape.assertFinite(this._y2 * factor, "y2");
+    return () => {
+      this._x1 = x1;
+      this._y1 = y1;
+      this._x2 = x2;
+      this._y2 = y2;
+    };
   }
 
   protected getSpecificAttribute(attribute: string): AttributeValue | undefined {

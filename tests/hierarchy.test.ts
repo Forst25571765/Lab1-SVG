@@ -216,50 +216,105 @@ describe("hierarchy commands", () => {
     expect(executor.history.undoCount).toBe(0);
   });
 
-  it("moves an object to the front of its siblings and restores its order", () => {
-    const document = new Document();
-    const executor = createExecutor();
-    const group = new Group("g1");
-    const first = new Rect("first", 0, 0, 1, 1);
-    const middle = new Rect("middle", 1, 1, 1, 1);
-    const last = new Text("last", 2, 2, "last");
+  describe.each(["root", "nested"] as const)("z-order at the %s level", (location) => {
+    it.each([
+      ["front", "leaf", FrontCommand, ["first", "last", "middle"]],
+      ["back", "leaf", BackCommand, ["middle", "first", "last"]],
+      ["front", "group", FrontCommand, ["first", "last", "middle"]],
+      ["back", "group", BackCommand, ["middle", "first", "last"]],
+    ] as const)("moves %s %s in painting order and restores it", (_direction, kind, CommandType, expected) => {
+      const document = new Document();
+      const executor = createExecutor();
+      const parent = location === "nested" ? new Group("scene") : null;
+      if (parent !== null) {
+        document.add(parent);
+      }
+      const first = new Rect("first", 0, 0, 10, 10, { fill: "red" });
+      const middle = kind === "group"
+        ? new Group("middle")
+        : new Rect("middle", 0, 0, 10, 10, { fill: "blue" });
+      const last = new Text("last", 2, 2, "last");
+      for (const shape of [first, middle, last]) {
+        document.add(shape, parent);
+      }
+      if (middle instanceof Group) {
+        document.add(new Rect("child-a", 1, 2, 3, 4), middle);
+        document.add(new Text("child-b", 5, 6, "child"), middle);
+      }
+      const descendants = [...middle.children];
+      const attributes = middle.getSubtree().map((shape) => shape.getAttributes());
+      const siblings = () => parent === null ? document.children : parent.children;
+      const assertUnchangedProperties = () => {
+        expect(middle.parent).toBe(parent);
+        expect(middle.children).toEqual(descendants);
+        expect(middle.getSubtree().map((shape) => shape.getAttributes())).toEqual(attributes);
+        for (const shape of [first, ...middle.getSubtree(), last]) {
+          expect(shape.ownerDocument).toBe(document);
+          expect(document.findById(shape.id)).toBe(shape);
+        }
+        for (const child of descendants) {
+          expect(child.parent).toBe(middle);
+        }
+        if (parent !== null) {
+          expect(document.children).toEqual([parent]);
+        }
+      };
 
-    document.add(group);
-    document.add(first, "g1");
-    document.add(middle, "g1");
-    document.add(last, "g1");
+      executor.execute(new CommandType(document, "middle"));
+      expect(siblings().map((shape) => shape.id)).toEqual(expected);
+      expect(executor.history.undoCount).toBe(1);
+      assertUnchangedProperties();
 
-    executor.execute(new FrontCommand(document, "last"));
-    expect(group.children).toEqual([last, first, middle]);
+      executor.undo();
+      expect(siblings()).toEqual([first, middle, last]);
+      assertUnchangedProperties();
 
-    executor.undo();
-    expect(group.children).toEqual([first, middle, last]);
+      executor.redo();
+      expect(siblings().map((shape) => shape.id)).toEqual(expected);
+      assertUnchangedProperties();
 
-    executor.redo();
-    expect(group.children).toEqual([last, first, middle]);
-  });
+      executor.undo();
+      expect(siblings()).toEqual([first, middle, last]);
+      assertUnchangedProperties();
+    });
 
-  it("moves an object to the back of its siblings and restores its order", () => {
-    const document = new Document();
-    const executor = createExecutor();
-    const group = new Group("g1");
-    const first = new Rect("first", 0, 0, 1, 1);
-    const middle = new Rect("middle", 1, 1, 1, 1);
-    const last = new Text("last", 2, 2, "last");
+    it.each([
+      ["front", "single", FrontCommand],
+      ["back", "single", BackCommand],
+      ["front", "already at edge", FrontCommand],
+      ["back", "already at edge", BackCommand],
+    ] as const)("records %s on a %s node as one undo unit", (direction, scenario, CommandType) => {
+      const document = new Document();
+      const executor = createExecutor();
+      const parent = location === "nested" ? new Group("scene") : null;
+      if (parent !== null) {
+        document.add(parent);
+      }
+      const target = new Rect("target", 0, 0, 1, 1);
+      const other = new Rect("other", 1, 1, 1, 1);
+      const initial = scenario === "single" ? [target]
+        : direction === "front" ? [other, target] : [target, other];
+      for (const shape of initial) {
+        document.add(shape, parent);
+      }
+      const siblings = () => parent === null ? document.children : parent.children;
 
-    document.add(group);
-    document.add(first, "g1");
-    document.add(middle, "g1");
-    document.add(last, "g1");
+      executor.execute(new CommandType(document, "target"));
+      expect(siblings()).toEqual(initial);
+      expect(executor.history.undoCount).toBe(1);
+      executor.undo();
+      expect(siblings()).toEqual(initial);
+      expect(executor.history.redoCount).toBe(1);
+      executor.redo();
+      expect(siblings()).toEqual(initial);
+      expect(executor.history.undoCount).toBe(1);
 
-    executor.execute(new BackCommand(document, "first"));
-    expect(group.children).toEqual([middle, last, first]);
-
-    executor.undo();
-    expect(group.children).toEqual([first, middle, last]);
-
-    executor.redo();
-    expect(group.children).toEqual([middle, last, first]);
+      executor.undo();
+      executor.execute(new CommandType(document, "target"));
+      expect(siblings()).toEqual(initial);
+      expect(executor.history.undoCount).toBe(1);
+      expect(executor.history.redoCount).toBe(0);
+    });
   });
 
   it.each(["root", "nested"] as const)(

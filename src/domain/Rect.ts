@@ -42,17 +42,26 @@ export class Rect extends Shape {
     return { ...super.attributes, x: this._x, y: this._y, width: this._width, height: this._height };
   }
 
-  public move(dx: number, dy: number): void {
-    this._x += Shape.assertFinite(dx, "dx");
-    this._y += Shape.assertFinite(dy, "dy");
+  protected prepareMove(dx: number, dy: number): () => void {
+    const x = Shape.assertFinite(this._x + dx, "x");
+    const y = Shape.assertFinite(this._y + dy, "y");
+    return () => {
+      this._x = x;
+      this._y = y;
+    };
   }
 
-  public scale(factor: number): void {
-    const numericFactor = Shape.assertScaleFactor(factor);
-    this._x *= numericFactor;
-    this._y *= numericFactor;
-    this._width *= numericFactor;
-    this._height *= numericFactor;
+  protected prepareScale(factor: number): () => void {
+    const x = Shape.assertFinite(this._x * factor, "x");
+    const y = Shape.assertFinite(this._y * factor, "y");
+    const width = Shape.assertFinite(this._width * factor, "width");
+    const height = Shape.assertFinite(this._height * factor, "height");
+    return () => {
+      this._x = x;
+      this._y = y;
+      this._width = width;
+      this._height = height;
+    };
   }
 
   protected getSpecificAttribute(attribute: string): AttributeValue | undefined {

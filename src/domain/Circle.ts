@@ -35,16 +35,24 @@ export class Circle extends Shape {
     return { ...super.attributes, cx: this._cx, cy: this._cy, r: this._r };
   }
 
-  public move(dx: number, dy: number): void {
-    this._cx += Shape.assertFinite(dx, "dx");
-    this._cy += Shape.assertFinite(dy, "dy");
+  protected prepareMove(dx: number, dy: number): () => void {
+    const cx = Shape.assertFinite(this._cx + dx, "cx");
+    const cy = Shape.assertFinite(this._cy + dy, "cy");
+    return () => {
+      this._cx = cx;
+      this._cy = cy;
+    };
   }
 
-  public scale(factor: number): void {
-    const numericFactor = Shape.assertScaleFactor(factor);
-    this._cx *= numericFactor;
-    this._cy *= numericFactor;
-    this._r *= numericFactor;
+  protected prepareScale(factor: number): () => void {
+    const cx = Shape.assertFinite(this._cx * factor, "cx");
+    const cy = Shape.assertFinite(this._cy * factor, "cy");
+    const r = Shape.assertFinite(this._r * factor, "r");
+    return () => {
+      this._cx = cx;
+      this._cy = cy;
+      this._r = r;
+    };
   }
 
   protected getSpecificAttribute(attribute: string): AttributeValue | undefined {

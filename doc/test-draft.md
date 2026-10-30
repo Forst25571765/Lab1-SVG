@@ -4,6 +4,8 @@
 
 本文件是实现前的测试设计，不代表当前所有测试都已经写成 Vitest 代码。每个用例先作为红色规格，等对应模块出现后再实现为测试；通过后再重构。
 
+2026-10-30 起，层次顺序、无参数 `canvas` 查询和文档操作历史边界统一遵循 [验收规格的语义澄清](./acceptance-spec.md#语义澄清2026-10-30)。
+
 测试分层：
 
 1. **领域层**：测试 `Document`、`Shape`、`Group` 的状态和行为；
@@ -37,6 +39,7 @@
 | DOMAIN-T04 | 查找不存在 ID | 返回明确的不存在结果或领域错误 |
 | DOMAIN-T05 | 重复 ID | 不允许添加第二个同 ID 对象 |
 | DOMAIN-T06 | ID 大小写 | `r1` 和 `R1` 按实验的大小写敏感约定处理 |
+| DOMAIN-T07 | 修改画布时任一尺寸为 NaN/Infinity | 报数值错误，宽、高均保持原值 |
 
 ### 2.2 六种图形
 
@@ -60,6 +63,15 @@
 | DOMAIN-T23 | Group `scale` | 所有子孙几何属性递归缩放 |
 | DOMAIN-T24 | `set` 合法属性 | 属性更新 |
 | DOMAIN-T25 | `set` 非法属性 | 拒绝修改并返回未知属性错误 |
+| DOMAIN-T26 | 五种叶子、空 Group、嵌套 Group 的 dx/dy 为 NaN/±Infinity | 报数值错误，完整文档状态不变 |
+| DOMAIN-T27 | 移动导致任一位置属性溢出 | 拒绝正向/负向溢出，不留下较早属性的部分修改 |
+| DOMAIN-T28 | 缩放导致任一几何属性溢出 | 拒绝，不改变位置、尺寸、样式或文本 |
+| DOMAIN-T29 | Group 后部或嵌套后代发生溢出 | 前部已计算的图形也不修改，整个操作失败 |
+| DOMAIN-T30 | 大数的运算结果仍有限 | 正常接受，不能一律拒绝大数；普通小数和负坐标仍可用 |
+| DOMAIN-T31 | 脱离文档的树中跨分支/祖先 ID 冲突 | 加入前拒绝，原树可继续正常挂载 |
+| DOMAIN-T32 | 父级和文档归属的公开访问 | 只读；旧的直接 setter 不再公开 |
+
+DOMAIN-T26 至 T30 的数值和整树原子性由 `tests/geometry-safety.test.ts` 验证；结构不变量和公开接口由 `tests/hierarchy-integrity.test.ts` 验证。`tests/helpers/documentState.ts` 同时检查节点唯一性、父级、文档归属、属性快照和对象身份。
 
 ## 3. Command 层测试
 
@@ -82,12 +94,25 @@
 | ID | 操作顺序 | 断言 |
 |---|---|---|
 | HIST-T01 | 编辑 A → 编辑 B → undo | 只撤销 B |
-| HIST-T02 | 编辑 A → undo → redo | B? 不存在；A 被重新执行 |
-| HIST-T03 | 编辑 A → undo → 新编辑 B → redo | redo 栈清空 |
-| HIST-T04 | 显示命令 → undo | 仍撤销最近编辑 |
-| HIST-T05 | 文档命令 → undo | 返回 `undo not allowed after io command` |
-| HIST-T06 | 文档命令 → 编辑 → undo | 可以撤销新的编辑 |
+| HIST-T02 | 编辑 A → undo → redo | A 被重新执行 |
+| HIST-T03 | 编辑 A → undo → 新编辑 B 成功 → redo | redo 栈清空 |
+| HIST-T04 | 显示查询 → undo | 查询保留两栈及禁用状态，仍可撤销最近编辑 |
+| HIST-T05 | init/read/save/canvas 修改成功 → undo/redo | 清空两栈，二者均返回 `undo not allowed after io command` |
+| HIST-T06 | 文档操作成功 → 成功编辑 → undo | 可以撤销新编辑，保留文档操作结果 |
 | HIST-T07 | 一条 `group` 命令 → undo | 整个分组一次恢复 |
+| HIST-T08 | move → canvas 查询 → undo | 撤销移动，查询未写入历史 |
+| HIST-T09 | move → undo → canvas 查询 → redo | 原移动正常重做，查询未清空 redo |
+| HIST-T10 | 文档操作成功 → canvas 查询 → undo/redo | 查询不能解除禁用 |
+| HIST-T11 | 文档操作成功 → 编辑失败 → undo/redo | 失败编辑不能解除禁用 |
+| HIST-T12 | canvas 修改失败，已有 undo 和 redo | 尺寸、两栈内容及禁用状态均保持原样 |
+| HIST-T13 | 文档操作成功 → 新编辑 → 撤销全部新编辑 → 再次 undo | 报空栈错误，不能跨边界撤销 |
+| HIST-T14 | canvas 设置为原尺寸 | 仍是成功修改操作，清栈并禁用历史 |
+| HIST-T15 | 替换当前文档 → 新文档编辑 → undo/redo | 只操作新文档，不恢复旧文档历史 |
+| HIST-T16 | 历史已禁用 → 文档操作失败或查询失败 | 文档和禁用状态均保持原样 |
+| HIST-T17 | 非法移动/溢出前已有 undo 和 redo | 两栈数量、栈顶命令身份和完整文档均不变，原 redo 仍产生正确结果 |
+| HIST-T18 | 溢出失败 → 后续正常编辑 → undo | 后续快照不含非有限数，撤销正常 |
+| HIST-T19 | 同一缩放命令首次溢出失败，修正原始数据后重试 | 可以重新执行及撤销，失败未将命令标记为已执行 |
+| HIST-T20 | 小数移动/缩放反复 undo/redo | 精确恢复保存的快照，不使用反向运算累积误差 |
 
 ## 4. 层级和顺序测试
 
@@ -99,9 +124,18 @@
 | HIER-T04 | ungroup 普通子容器 | 子节点提升到原父级，位置正确 |
 | HIER-T05 | ungroup 顶层容器 | 返回顶层容器错误 |
 | HIER-T06 | addto | 目标成为容器最后一个子节点 |
-| HIER-T07 | front | 目标成为同级最前节点 |
-| HIER-T08 | back | 目标成为同级最后节点 |
+| HIER-T07 | front | 目标成为视觉最上层，位于同级列表末尾 |
+| HIER-T08 | back | 目标成为视觉最底层，位于同级列表开头 |
 | HIER-T09 | 任意层级操作失败 | 原树完全保持不变 |
+| HIER-T10 | 根级或嵌套级叶子/Group 排序 | 其他同级对象相对顺序、组内顺序、属性、父级及归属不变 |
+| HIER-T11 | front/back → undo → redo → undo | 每次准确恢复对应文档顺序 |
+| HIER-T12 | 单节点或已在目标位置时 front/back | 顺序不变，仍产生一个 undo 单元；新成功命令清空 redo |
+| HIER-T13 | 两个重叠矩形写出 SVG 后排序 | front 的矩形在重叠区域覆盖另一矩形，back 后位于下方（SVG IO 完成后执行） |
+| HIER-T14 | 已挂载 Group 的公开 add/insert/remove，包括旧 Document 参数 | 拒绝；原树、待加入节点及归属保持不变 |
+| HIER-T15 | 跨文档引用或同 ID 的其他对象 | Document 入口按对象身份拒绝错误操作，两棵树均不变 |
+| HIER-T16 | 子列表的返回值被调用方改写 | 不改变文档或 Group 的内部子列表 |
+| HIER-T17 | 整棵子树摘除、转移和恢复 | 所有后代归属同步改变；已转入其他文档时不能被旧文档直接恢复 |
+| HIER-T18 | create/group/move/scale/set/addto/front/back/ungroup/delete 混合序列 | 每步检查不变量，完整 undo/redo 精确恢复结构、属性和对象身份 |
 
 ## 5. CLI 解析测试
 
@@ -138,7 +172,7 @@
 | IO-T12 | 外部 SVG 含嵌套 Group | 子树正确恢复 |
 | IO-T13 | 文件不存在 | 返回 cannot read file 错误 |
 | IO-T14 | 目标不可写 | 返回 cannot write file 错误 |
-| IO-T15 | read/save 后 undo | 返回文档命令历史错误 |
+| IO-T15 | read/save 成功后 undo/redo | 清空两栈并返回文档命令历史错误；失败时文档和历史均保留 |
 
 建议注入 `FileSystem` 和 `SvgCodec` 接口，在单元测试中使用内存实现，避免测试依赖真实路径。
 
@@ -214,4 +248,4 @@ undo
 5. 在测试保护下重构；
 6. 再运行完整测试集。
 
-当前阶段只完成了测试框架 smoke test；领域、Command、CLI 和 IO 测试应随着对应阶段逐步实现。
+当前已经实现框架 smoke test、领域、Command、层级测试，以及 `tests/history-policy.test.ts` 的内存历史策略、`tests/geometry-safety.test.ts` 的移动/溢出原子性、`tests/hierarchy-integrity.test.ts` 的接口保护和混合命令回放。CLI 业务解析、SVG IO、实际文件失败和浏览器重叠渲染测试仍待对应步骤实现，不能以内存测试代替端到端验收。

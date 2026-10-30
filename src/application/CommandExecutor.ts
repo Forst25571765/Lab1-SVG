@@ -9,6 +9,17 @@ export class CommandExecutor {
     this.history.record(command);
   }
 
+  /** Run a synchronous document operation; only success creates a history boundary. */
+  public executeDocument(operation: () => void): void {
+    operation();
+    this.history.blockAfterDocumentCommand();
+  }
+
+  /** Queries, including canvas without arguments, leave all history state untouched. */
+  public executeQuery<Result>(query: () => Result): Result {
+    return query();
+  }
+
   public undo(): void {
     const command = this.history.peekUndo();
     command.undo();

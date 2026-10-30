@@ -1,106 +1,110 @@
 import { DomainError, duplicateId, unknownAttribute } from "./errors.js";
 import { Shape } from "./Shape.js";
 import type { AttributeValue, ShapeOptions } from "./types.js";
-import type { Document } from "./Document.js";
+import { insertGroupChild, removeGroupChild, setShapeLocation } from "./internal/treeMutation.js";
 
 export class Group extends Shape {
-  private readonly _children: Shape[] = [];
+  readonly #children: Shape[] = [];
 
   public constructor(id: string, options: ShapeOptions = {}) {
     super(id, "g", options);
   }
 
   public override get children(): readonly Shape[] {
-    return [...this._children];
+    return [...this.#children];
   }
 
   public override getSubtree(): readonly Shape[] {
-    return [this, ...this._children.flatMap((child) => child.getSubtree())];
+    return [this, ...this.#children.flatMap((child) => child.getSubtree())];
   }
 
   public override containsDescendant(target: Shape): boolean {
-    return this._children.some(
+    return this.#children.some(
       (child) => child === target || child.containsDescendant(target),
     );
   }
 
-  public addChild(child: Shape, documentOwner: Document | null = null): void {
-    this.insertChildAt(child, this._children.length, documentOwner);
+  public addChild(child: Shape): void {
+    this.insertChildAt(child, this.#children.length);
   }
 
-  public insertChildAt(
-    child: Shape,
-    index: number,
-    documentOwner: Document | null = null,
-  ): void {
+  public insertChildAt(child: Shape, index: number): void {
+    this.assertDetached();
     if (child === this || child.containsDescendant(this)) {
       throw new DomainError("cycle", "cannot create a cycle in the shape tree");
     }
     if (child.parent !== null) {
       throw new DomainError("shape-already-attached", "shape already has a parent");
     }
-    if (this.ownerDocument !== documentOwner) {
-      throw new DomainError(
-        "invalid-parent",
-        "attached shapes must be modified through Document",
-      );
-    }
-    if (child.ownerDocument !== null && child.ownerDocument !== documentOwner) {
+    const incoming = child.getSubtree();
+    if (incoming.some((shape) => shape.ownerDocument !== null)) {
       throw new DomainError("shape-already-attached", "shape already belongs to a document");
     }
-    if (documentOwner === null && child.ownerDocument !== null) {
-      throw new DomainError("shape-already-attached", "shape already belongs to a document");
-    }
-    if (!Number.isInteger(index) || index < 0 || index > this._children.length) {
+    if (!Number.isInteger(index) || index < 0 || index > this.#children.length) {
       throw new DomainError("invalid-parent", "child index is out of range");
     }
 
-    const existingIds = new Set(this.getSubtree().map((shape) => shape.id));
-    for (const shape of child.getSubtree()) {
+    let root: Shape = this;
+    while (root.parent !== null) {
+      root = root.parent;
+    }
+    const existingIds = new Set(root.getSubtree().map((shape) => shape.id));
+    for (const shape of incoming) {
       if (existingIds.has(shape.id)) {
         throw duplicateId(shape.id);
       }
       existingIds.add(shape.id);
     }
 
-    this._children.splice(index, 0, child);
-    child.setParent(this);
-    child.getSubtree().forEach((shape) => shape.setDocumentOwner(documentOwner));
+    this[insertGroupChild](child, index);
   }
 
-  public removeChild(child: Shape, documentOwner: Document | null = null): number {
-    if (this.ownerDocument !== documentOwner) {
+  public removeChild(child: Shape): number {
+    this.assertDetached();
+    return this[removeGroupChild](child);
+  }
+
+  private assertDetached(): void {
+    if (this.ownerDocument !== null) {
       throw new DomainError(
         "invalid-parent",
         "attached shapes must be modified through Document",
       );
     }
-    const index = this._children.indexOf(child);
+  }
+
+  /** @internal The caller validates ownership, IDs, cycles and insertion position first. */
+  public [insertGroupChild](child: Shape, index: number): void {
+    this.#children.splice(index, 0, child);
+    for (const shape of child.getSubtree()) {
+      shape[setShapeLocation](shape === child ? this : shape.parent, this.ownerDocument);
+    }
+  }
+
+  /** @internal Document checks membership before removing an attached child. */
+  public [removeGroupChild](child: Shape): number {
+    const index = this.#children.indexOf(child);
     if (index < 0) {
       throw new DomainError("no-such-shape", `shape is not a child of ${this.id}`);
     }
-    this._children.splice(index, 1);
-    child.setParent(null);
+    this.#children.splice(index, 1);
+    for (const shape of child.getSubtree()) {
+      shape[setShapeLocation](shape === child ? null : shape.parent, null);
+    }
     return index;
   }
 
   public indexOf(child: Shape): number {
-    return this._children.indexOf(child);
+    return this.#children.indexOf(child);
   }
 
-  public move(dx: number, dy: number): void {
-    const numericDx = Shape.assertFinite(dx, "dx");
-    const numericDy = Shape.assertFinite(dy, "dy");
-    for (const child of this._children) {
-      child.move(numericDx, numericDy);
-    }
+  protected prepareMove(_dx: number, _dy: number): () => void {
+    // Group has no local geometry; Shape prepares all descendants before committing.
+    return () => {};
   }
 
-  public scale(factor: number): void {
-    const numericFactor = Shape.assertScaleFactor(factor);
-    for (const child of this._children) {
-      child.scale(numericFactor);
-    }
+  protected prepareScale(_factor: number): () => void {
+    return () => {};
   }
 
   protected getSpecificAttribute(_attribute: string): AttributeValue | undefined {

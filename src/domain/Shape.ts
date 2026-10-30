@@ -2,10 +2,11 @@ import type { Group } from "./Group.js";
 import type { Document } from "./Document.js";
 import { DomainError, scaleFactorMustBePositive, unknownAttribute } from "./errors.js";
 import type { AttributeValue, ShapeKind, ShapeOptions } from "./types.js";
+import { setShapeLocation } from "./internal/treeMutation.js";
 
 export abstract class Shape {
-  private _parent: Group | null = null;
-  private _ownerDocument: Document | null = null;
+  #parent: Group | null = null;
+  #ownerDocument: Document | null = null;
   private _fill: string | undefined;
   private _stroke: string | undefined;
   private _strokeWidth: number | undefined;
@@ -32,11 +33,11 @@ export abstract class Shape {
   }
 
   public get parent(): Group | null {
-    return this._parent;
+    return this.#parent;
   }
 
   public get ownerDocument(): Document | null {
-    return this._ownerDocument;
+    return this.#ownerDocument;
   }
 
   public get fill(): string | undefined {
@@ -122,9 +123,28 @@ export abstract class Shape {
     }
   }
 
-  public abstract move(dx: number, dy: number): void;
+  public move(dx: number, dy: number): void {
+    const numericDx = Shape.assertFinite(dx, "dx");
+    const numericDy = Shape.assertFinite(dy, "dy");
+    this.applyGeometry((shape) => shape.prepareMove(numericDx, numericDy));
+  }
 
-  public abstract scale(factor: number): void;
+  public scale(factor: number): void {
+    const numericFactor = Shape.assertScaleFactor(factor);
+    this.applyGeometry((shape) => shape.prepareScale(numericFactor));
+  }
+
+  /** Preparation validates every result without mutation; commits only assign checked values. */
+  protected abstract prepareMove(dx: number, dy: number): () => void;
+
+  protected abstract prepareScale(factor: number): () => void;
+
+  private applyGeometry(prepare: (shape: Shape) => () => void): void {
+    const commits = this.getSubtree().map(prepare);
+    for (const commit of commits) {
+      commit();
+    }
+  }
 
   public getSubtree(): readonly Shape[] {
     return [this];
@@ -142,14 +162,10 @@ export abstract class Shape {
     Shape.rejectUnknownAttribute(attribute);
   }
 
-  /** @internal Parent links are changed by Document and Group only. */
-  public setParent(parent: Group | null): void {
-    this._parent = parent;
-  }
-
-  /** @internal Document ownership is maintained with the parent links. */
-  public setDocumentOwner(document: Document | null): void {
-    this._ownerDocument = document;
+  /** @internal Update both links together after Document or detached Group validation. */
+  public [setShapeLocation](parent: Group | null, document: Document | null): void {
+    this.#parent = parent;
+    this.#ownerDocument = document;
   }
 
   protected static assertFinite(value: number | string, label: string): number {

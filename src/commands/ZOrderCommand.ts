@@ -22,7 +22,8 @@ export abstract class ZOrderCommand extends StatefulCommand {
     const siblingCount = shape.parent === null
       ? this.document.children.length
       : shape.parent.children.length;
-    const targetIndex = this.direction === "front" ? 0 : siblingCount - 1;
+    // SVG paints later siblings on top of earlier siblings.
+    const targetIndex = this.direction === "front" ? siblingCount - 1 : 0;
     this.document.reorder(shape, targetIndex);
     this.markExecuted();
   }
