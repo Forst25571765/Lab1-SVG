@@ -10,5 +10,6 @@ export { ShapeFactory } from "./ShapeFactory.js";
 export { Text } from "./Text.js";
 export type { DomainErrorCode } from "./errors.js";
 export type { RemovedShape, ShapeParent } from "./Document.js";
-export type { ShapeSpec } from "./ShapeFactory.js";
+export type { ShapeSpec, ShapeParameter } from "./ShapeFactory.js";
+export type { ShapeVisitor } from "./ShapeVisitor.js";
 export type { AttributeValue, ShapeKind, ShapeOptions } from "./types.js";

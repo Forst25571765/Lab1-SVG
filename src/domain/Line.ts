@@ -1,7 +1,10 @@
 import { Shape } from "./Shape.js";
+import type { ShapeVisitor } from "./ShapeVisitor.js";
 import type { AttributeValue, ShapeOptions } from "./types.js";
 
 export class Line extends Shape {
+  public accept<Result>(visitor: ShapeVisitor<Result>): Result { return visitor.visitLine(this); }
+
   private _x1: number;
   private _y1: number;
   private _x2: number;

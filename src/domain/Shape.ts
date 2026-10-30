@@ -3,8 +3,11 @@ import type { Document } from "./Document.js";
 import { DomainError, scaleFactorMustBePositive, unknownAttribute } from "./errors.js";
 import type { AttributeValue, ShapeKind, ShapeOptions } from "./types.js";
 import { setShapeLocation } from "./internal/treeMutation.js";
+import type { ShapeVisitor } from "./ShapeVisitor.js";
 
 export abstract class Shape {
+  public abstract accept<Result>(visitor: ShapeVisitor<Result>): Result;
+
   #parent: Group | null = null;
   #ownerDocument: Document | null = null;
   private _fill: string | undefined;

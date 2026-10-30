@@ -1,31 +1,31 @@
 import { createInterface } from "node:readline";
 import { pathToFileURL } from "node:url";
+import { DocumentSession } from "./application/DocumentSession.js";
+import { SvgCli } from "./cli/SvgCli.js";
+import { NodeFileSystem, SvgReader, SvgWriter } from "./infrastructure/index.js";
 
 export interface ReplOptions {
   input: NodeJS.ReadableStream;
   output: NodeJS.WritableStream;
+  editor: SvgCli;
+  showBanner: boolean;
 }
 
-/**
- * Start the minimal Lab1 command-line loop.
- * Command parsing and business behavior will be added in later steps.
- */
+/** Composition root and synchronous REPL; one session owns all document and history operations. */
 export function startRepl(
   options: Partial<ReplOptions> = {}
 ): ReturnType<typeof createInterface> {
   const input = options.input ?? process.stdin;
   const output = options.output ?? process.stdout;
+  const editor = options.editor ?? new SvgCli(new DocumentSession(new NodeFileSystem(), new SvgReader(), new SvgWriter()));
   const repl = createInterface({ input, output });
 
+  if (options.showBanner !== false) output.write("svg-editor 0.1 — type 'help' for commands\n\n");
   repl.setPrompt("svg> ");
   repl.prompt();
 
   repl.on("line", (line) => {
-    const commandLine = line.trim();
-
-    if (commandLine.length > 0 && !commandLine.startsWith("#")) {
-      output.write(`error: command not implemented: ${commandLine}\n`);
-    }
+    for (const message of editor.run(line)) output.write(`${message}\n`);
 
     repl.prompt();
   });

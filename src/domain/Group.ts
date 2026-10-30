@@ -1,9 +1,12 @@
 import { DomainError, duplicateId, unknownAttribute } from "./errors.js";
 import { Shape } from "./Shape.js";
+import type { ShapeVisitor } from "./ShapeVisitor.js";
 import type { AttributeValue, ShapeOptions } from "./types.js";
 import { insertGroupChild, removeGroupChild, setShapeLocation } from "./internal/treeMutation.js";
 
 export class Group extends Shape {
+  public accept<Result>(visitor: ShapeVisitor<Result>): Result { return visitor.visitGroup(this); }
+
   readonly #children: Shape[] = [];
 
   public constructor(id: string, options: ShapeOptions = {}) {

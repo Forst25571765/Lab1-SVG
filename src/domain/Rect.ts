@@ -1,7 +1,10 @@
 import { Shape } from "./Shape.js";
+import type { ShapeVisitor } from "./ShapeVisitor.js";
 import type { AttributeValue, ShapeOptions } from "./types.js";
 
 export class Rect extends Shape {
+  public accept<Result>(visitor: ShapeVisitor<Result>): Result { return visitor.visitRect(this); }
+
   private _x: number;
   private _y: number;
   private _width: number;

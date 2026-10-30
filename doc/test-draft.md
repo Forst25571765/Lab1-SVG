@@ -6,6 +6,8 @@
 
 2026-10-30 起，层次顺序、无参数 `canvas` 查询和文档操作历史边界统一遵循 [验收规格的语义澄清](./acceptance-spec.md#语义澄清2026-10-30)。
 
+S6 当前结果：新增 CLI/展示/REPL 测试 93 个，连同已有 235 个，全量 14 个文件、328 个测试通过；类型检查、构建通过，真实 CLI 输出的 Edge 浏览器专项已有通过记录。完整记录见 [S6.md](./S6.md)。本文件保留测试设计及历史阶段记录，不把尚未进行的 S7/S8 评审视为完成。
+
 测试分层：
 
 1. **领域层**：测试 `Document`、`Shape`、`Group` 的状态和行为；
@@ -21,11 +23,11 @@
 | REPL-T01 | CLI | 启动 REPL | 输出 `svg>` 并等待输入 |
 | REPL-T02 | CLI | 空行 | 不产生错误，再次输出提示符 |
 | REPL-T03 | CLI | `# comment` | 不执行命令、不改变状态 |
-| REPL-T04 | CLI | 输入未实现命令 | 输出 `error:`，程序继续等待 |
+| REPL-T04 | CLI | 输入未知命令 | 输出 `error: unknown command: ...`，程序继续等待 |
 | REPL-T05 | CLI | EOF | REPL 正常结束 |
 | REPL-T06 | 测试环境 | 运行 `npm test` | Vitest 能发现并运行测试 |
 
-当前已实现的 `framework.smoke.test.ts` 只覆盖 REPL-T06；REPL 行为测试需要在 CLI 入口稳定后补充。
+`framework.smoke.test.ts` 覆盖 REPL-T06；S6 的 `cli-repl.test.ts` 已覆盖启动提示符、空行、注释、错误继续、等待下一次交互输入、EOF 和导入 main 不启动 REPL。
 
 ## 2. 领域模型测试
 
@@ -150,6 +152,10 @@ DOMAIN-T26 至 T30 的数值和整树原子性由 `tests/geometry-safety.test.ts
 | PARSER-T07 | 未知命令 | 以 `error:` 开头，不改变状态 |
 | PARSER-T08 | 非法数字 | 以 `error:` 开头，不改变状态 |
 | PARSER-T09 | `box` | 返回规定的 unknown shape type 错误 |
+| PARSER-T10 | `init`、`init 400 200`、`init 400` | 前两者成功；单参数报 `error: usage: init [w h]`，不改变文档、来源路径或历史 |
+| PARSER-T11 | `create rect r1 0 0 10 10 #4a90d9 # 蓝色` | 执行标记前的创建，保留颜色；同样保留文字/路径内的 #；纯注释/查询不影响历史，标记前错误仍保持原子性 |
+
+S6 已用 `cli-parser.test.ts` 的 16 个用例和 `cli-commands.test.ts` 的 67 个用例覆盖上述解析及接线，另含空文字、中文/空格路径、反斜杠、转义、未闭合/中段引号、颜色、文字中的 in/#、合法 ID in、严格数值、所有命令参数数量和失败历史不变。init 按用户要求仅接受零或两个参数，新增三个回归覆盖尚无文档、已读入文件且两栈非空、历史已禁用的失败状态。注释功能另新增 5 个分词和 3 个命令回归，实际进程的带注释保存会话见 CLI 端到端用例。
 
 ## 6. 文档和 SVG IO 测试
 
@@ -178,7 +184,7 @@ DOMAIN-T26 至 T30 的数值和整树原子性由 `tests/geometry-safety.test.ts
 
 S5 已以同步 FileSystem、SvgReaderPort、SvgWriterPort 落地上述边界。新增 svg-io（16）、document-session（16）、node-filesystem（3）共 35 个定向用例，加上已有 history-policy 的 11 个，共 46 个通过。覆盖 IO-T01 至 T04、T10 至 T15 对应的应用/IO 行为，以及保存路径、非法 SVG、ID 防冲突和序列化失败；CLI 的实际输出仍待 S6。IO-T05 首次 file 预览受阻，随后通过独立 HTTP 测试入口完成六组样例的 Edge 自动验证，包含加载、DOM、文字、继承样式及截图像素检查，现已通过。记录见 [S5.md](./S5.md)。
 
-随后按用户要求运行了完整 `npm test`：10 个文件、235 个测试全部通过；类型检查与构建通过。浏览器专项独立通过，不计入 235 个单元/集成用例；CLI 业务和完整命令行会话仍待后续验收。
+S5 当时按用户要求运行了完整 `npm test`：10 个文件、235 个测试全部通过；类型检查与构建通过。S5 浏览器专项独立通过，不计入 235 个单元/集成用例。S6 随后补齐 CLI 输出和真实完整会话，并以实际 CLI 保存结果完成五组 Edge 专项；含 init 和注释修订后的当前总数为 328 个。
 
 ## 7. 显示命令测试
 
@@ -189,6 +195,8 @@ S5 已以同步 FileSystem、SvgReaderPort、SvgWriterPort 落地上述边界。
 | VIEW-T03 | `show r1` | 显示类型、父级和关键属性 |
 | VIEW-T04 | `help` | 包含所有命令和语法 |
 | VIEW-T05 | 显示命令后 undo | 不改变 undo 栈 |
+
+S6 的 `shape-presentation.test.ts` 验证六类图形的完整树形输出、几何/父级/显式样式、空树/子树、文档顺序及展示不修改对象；`cli-commands.test.ts` 验证 help 的完整语法、查询后 undo/redo 栈顶与禁用状态保持。
 
 ## 8. 错误原子性测试
 
@@ -241,6 +249,12 @@ undo
 
 断言最后一条命令返回文档命令历史错误，且 `r1` 仍然存在。
 
+### S6 已执行的端到端覆盖
+
+`cli-repl.test.ts` 的 7 个用例中，真实子进程分别回放原文第 6 节 transcript、第 6.1 节流程图，以及剩余层级/显示/文档命令路线；同时检查 stdout、stderr、退出码、实际保存文件和读回模型。流程图追加 undo/redo/undo 后检查坐标，再修改中文并使用带空格/中文文件名保存。另有带行末注释的真实保存会话，验证颜色、文字/文件名中的 #、in 与 undo/redo，并用交互子进程验证首个提示符后保持运行、错误后继续和 EOF 退出。
+
+`npm run preview:s6` 使用真实 CLI 子进程生成流程图、读回、front、back、外部导入五组输出，通过独立 HTTP 服务供 Edge 检查。已验证图片加载、SVG DOM、中文、父子顺序、保存前后内容一致及真实截图像素；控制台无 warning/error。该专项单独执行，不计入 Vitest 数量。
+
 ## 10. Test → Code → Refactor 顺序
 
 每个功能按以下步骤推进：
@@ -252,4 +266,4 @@ undo
 5. 在测试保护下重构；
 6. 再运行完整测试集。
 
-当前已经实现框架 smoke test、领域、Command、层级测试，以及 `tests/history-policy.test.ts` 的内存历史策略、`tests/geometry-safety.test.ts` 的移动/溢出原子性、`tests/hierarchy-integrity.test.ts` 的接口保护和混合命令回放。S5 另完成 SVG IO、应用层文档操作及实际文件失败检查，全量 235 个测试通过；本地渲染和独立 HTTP 页面的 Edge 浏览器自动检查也已通过。CLI 业务解析及完整命令行会话仍待后续验收，不能用当前集合代替最终端到端验收。
+当前已实现框架 smoke test、领域、Command、层级、内存历史、移动/溢出原子性、接口保护与混合命令回放；S5 完成 SVG IO、文档会话及真实文件失败检查，S6 完成 CLI 解析、全命令接线、展示和实际进程会话。当前全量 328 个测试、类型检查和构建通过，两个阶段的 Edge 浏览器专项分别有记录。S7 仍需评审测试矩阵和重构需要，S8 仍需最终发布验收，不能把已有测试通过等同于这些工作已完成。

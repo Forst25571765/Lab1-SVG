@@ -15,7 +15,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "cli": "tsx src/main.ts",
-    "preview:s5": "tsx scripts/preview-s5.ts"
+    "preview:s5": "tsx scripts/preview-s5.ts",
+    "preview:s6": "tsx scripts/preview-s6.ts"
   },
   "repository": {
     "type": "git",

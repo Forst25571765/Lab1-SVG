@@ -1,7 +1,10 @@
 import { Shape } from "./Shape.js";
+import type { ShapeVisitor } from "./ShapeVisitor.js";
 import type { AttributeValue, ShapeOptions } from "./types.js";
 
 export class Text extends Shape {
+  public accept<Result>(visitor: ShapeVisitor<Result>): Result { return visitor.visitText(this); }
+
   private _x: number;
   private _y: number;
   private _content: string;

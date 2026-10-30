@@ -6,7 +6,7 @@ import { Line } from "./Line.js";
 import { Rect } from "./Rect.js";
 import { Shape, toFiniteNumber } from "./Shape.js";
 import { Text } from "./Text.js";
-import { isRecord, type ShapeOptions } from "./types.js";
+import { isRecord, type ShapeKind, type ShapeOptions } from "./types.js";
 
 export type ShapeSpec =
   | ({ type: "rect"; id: string; x: number; y: number; width: number; height: number } & ShapeOptions)
@@ -18,7 +18,46 @@ export type ShapeSpec =
 
 type ParameterBag = Record<string, unknown>;
 
+export interface ShapeParameter {
+  readonly name: string;
+  readonly type: "number" | "text";
+  readonly optional?: boolean;
+}
+
+const parameterSchemas: Readonly<Record<ShapeKind, readonly ShapeParameter[]>> = {
+  rect: [
+    { name: "x", type: "number" }, { name: "y", type: "number" },
+    { name: "width", type: "number" }, { name: "height", type: "number" },
+    { name: "fill", type: "text", optional: true },
+  ],
+  circle: [
+    { name: "cx", type: "number" }, { name: "cy", type: "number" }, { name: "r", type: "number" },
+    { name: "fill", type: "text", optional: true },
+  ],
+  ellipse: [
+    { name: "cx", type: "number" }, { name: "cy", type: "number" },
+    { name: "rx", type: "number" }, { name: "ry", type: "number" },
+    { name: "fill", type: "text", optional: true },
+  ],
+  line: [
+    { name: "x1", type: "number" }, { name: "y1", type: "number" },
+    { name: "x2", type: "number" }, { name: "y2", type: "number" },
+    { name: "stroke", type: "text", optional: true },
+  ],
+  text: [{ name: "x", type: "number" }, { name: "y", type: "number" }, { name: "text", type: "text" }],
+  g: [],
+};
+
 export class ShapeFactory {
+  public static get types(): readonly ShapeKind[] {
+    return Object.keys(parameterSchemas) as ShapeKind[];
+  }
+
+  public static parametersFor(type: string): readonly ShapeParameter[] {
+    if (!Object.prototype.hasOwnProperty.call(parameterSchemas, type)) throw unknownShapeType(type);
+    return parameterSchemas[type as ShapeKind].map((parameter) => ({ ...parameter }));
+  }
+
   public create(input: ShapeSpec): Shape;
   public create(type: string, id: string, ...args: unknown[]): Shape;
   public create(type: string, parameters: ParameterBag): Shape;
@@ -127,22 +166,7 @@ function normalizeFactoryInput(
 }
 
 function positionalParameters(type: string, args: unknown[]): ParameterBag {
-  switch (type) {
-    case "rect":
-      return { x: args[0], y: args[1], width: args[2], height: args[3], fill: args[4] };
-    case "circle":
-      return { cx: args[0], cy: args[1], r: args[2], fill: args[3] };
-    case "ellipse":
-      return { cx: args[0], cy: args[1], rx: args[2], ry: args[3], fill: args[4] };
-    case "line":
-      return { x1: args[0], y1: args[1], x2: args[2], y2: args[3], stroke: args[4] };
-    case "text":
-      return { x: args[0], y: args[1], text: args[2] };
-    case "g":
-      return {};
-    default:
-      return {};
-  }
+  return Object.fromEntries(ShapeFactory.parametersFor(type).map((parameter, index) => [parameter.name, args[index]]));
 }
 
 function requiredNumber(parameters: ParameterBag, name: string): number {

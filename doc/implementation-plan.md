@@ -36,6 +36,8 @@
 
 同日已补充移动、缩放和层级写入的回归修复：输入及几何结果均要求有限数，整个子树准备成功后再提交；已挂载结构统一经 Document 修改。公开 Group 方法仅支持脱离文档的树。当前内存测试共 200 个通过；详细范围和回归证据见 [S4.md](./S4.md)。
 
+S6 完成并按用户要求收紧 init 参数、支持行末注释后的当前基线为全量 14 个测试文件、328 个测试通过（S5 基线 235 个，加 S6 新增 93 个），类型检查和构建通过。两个原文 CLI 会话及实际输出 SVG 的 Edge 浏览器验收已有通过记录，记录见 [S6.md](./S6.md)。上述 200 个测试为 S4 当时的结果。S6 按用户授权统一创建本地提交，本次不推送。
+
 ## 3. 前置准备
 
 1. 初始化 TypeScript 项目和测试框架。
@@ -135,7 +137,7 @@ main.ts（Composition Root）
 - 实现 `Shape` 抽象；
 - 实现 `Rect`、`Circle`、`Ellipse`、`Line`、`Text`、`Group`；
 - 实现 `Document` 和画布尺寸；
-- 实现 `init [w] [h]` 对应的文档创建逻辑：使用指定尺寸或默认的 800×600 创建空当前文档；
+- 实现 init 对应的文档创建逻辑：使用指定尺寸或默认的 800×600 创建空当前文档；CLI 按用户补充要求采用 `init [w h]`，只接受零或两个尺寸；
 - 实现唯一 ID、父子关系和 `ShapeFactory`；
 - 实现图形的几何属性和统一操作。
 
@@ -218,7 +220,7 @@ main.ts（Composition Root）
 工作内容：
 
 - 实现 `CommandParser`；
-- 支持 `init [w] [h]`、注释行、引号参数和 `in <containerId>`；
+- 支持 `init [w h]`（零或两个尺寸）、整行/行末注释、引号参数和 `in <containerId>`；
 - 实现 `CommandRegistry`；
 - 实现 `tree`、`show`、`help`；
 - 统一输出成功摘要和 `error:` 错误。
@@ -232,6 +234,10 @@ main.ts（Composition Root）
 - 命令失败时文档状态不改变；
 - `tree` 和 `show` 输出包含规定的几何属性。
 
+2026-10-30 已完成本步骤：CommandParser、CommandArguments、CommandRegistry、ShapePresenter 和 SvgCli 接入实际 REPL，全部 19 条命令共用一个 DocumentSession/executor。图形参数元数据集中在 ShapeFactory；几何输出采用领域 Visitor 接口，避免在 CLI 按类型名分派。init 按用户要求只接受零或两个参数；注释支持整行和引号外独立 # 引入的行末内容，保留颜色、文字和路径。canvas 参数数量、help 无文档可用和转义等补充决定见 [S6.md](./S6.md) 与验收规格。
+
+新增 93 个测试（含 init 参数修订的 3 个、注释修订的 9 个回归），全量 328 个通过。真实 CLI 子进程回放第 6 节典型会话及第 6.1 节流程图，并增加带注释的保存会话，检查输出、实际 SVG 和 EOF；`npm run preview:s6` 另生成五组真实 CLI 输出并完成 Edge 加载、DOM、中文、绘制顺序和截图像素验收，后续修订不改变这些样例使用的语法。类型检查和构建通过。本次按用户授权提交相关代码、测试和文档，不推送或打 tag。
+
 ### 步骤 7：综合测试和重构
 
 工作内容：
@@ -241,7 +247,7 @@ main.ts（Composition Root）
 - 检查依赖方向和名字分派位置；
 - 根据测试结果重构重复代码和过大的类。
 
-已提前完成的回归保护包括 `geometry-safety.test.ts`（移动异常、逐属性溢出、整组原子性及失败后的历史）和 `hierarchy-integrity.test.ts`（公开入口保护、归属不变量及 21 条混合命令完整 undo/redo）。步骤 7 仍需补齐后续 CLI/IO 模块的验证，不能以当前内存测试通过代替最终验收。
+已提前完成的回归保护包括 `geometry-safety.test.ts`（移动异常、逐属性溢出、整组原子性及失败后的历史）和 `hierarchy-integrity.test.ts`（公开入口保护、归属不变量及 21 条混合命令完整 undo/redo）。S5、S6 已补齐 IO、CLI、实际文件和浏览器专项；步骤 7 仍需逐项评审完整矩阵、检查遗漏和模块依赖，并评估注册表等较大类的重构需要。当前测试通过不代替最终质量审查。
 
 原文档参照：完整实验文档。测试矩阵必须覆盖命令总表、错误表、undo/redo 规则、树形输出和典型会话，不能只测试正常路径。
 
