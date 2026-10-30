@@ -21,8 +21,8 @@ export class Rect extends Shape {
     super(id, "rect", options);
     this._x = Shape.assertFinite(x, "x");
     this._y = Shape.assertFinite(y, "y");
-    this._width = Shape.assertFinite(width, "width");
-    this._height = Shape.assertFinite(height, "height");
+    this._width = Shape.assertNonNegative(width, "width");
+    this._height = Shape.assertNonNegative(height, "height");
   }
 
   public get x(): number {
@@ -57,8 +57,8 @@ export class Rect extends Shape {
   protected prepareScale(factor: number): () => void {
     const x = Shape.assertFinite(this._x * factor, "x");
     const y = Shape.assertFinite(this._y * factor, "y");
-    const width = Shape.assertFinite(this._width * factor, "width");
-    const height = Shape.assertFinite(this._height * factor, "height");
+    const width = Shape.assertNonNegative(this._width * factor, "width");
+    const height = Shape.assertNonNegative(this._height * factor, "height");
     return () => {
       this._x = x;
       this._y = y;
@@ -91,10 +91,10 @@ export class Rect extends Shape {
         this._y = Shape.assertFinite(value, attribute);
         return;
       case "width":
-        this._width = Shape.assertFinite(value, attribute);
+        this._width = Shape.assertNonNegative(value, attribute);
         return;
       case "height":
-        this._height = Shape.assertFinite(value, attribute);
+        this._height = Shape.assertNonNegative(value, attribute);
         return;
       default:
         Shape.rejectUnknownAttribute(attribute);

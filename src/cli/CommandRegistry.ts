@@ -29,6 +29,14 @@ export class CommandRegistry {
     private readonly session: DocumentSession,
     private readonly presenter = new ShapePresenter(),
   ) {
+    this.registerDocumentCommands();
+    this.registerEditingCommands();
+    this.registerQueryCommands();
+    this.registerHistoryCommands();
+  }
+
+  private registerDocumentCommands(): void {
+    const session = this.session;
     this.register("init", "init [w h]", (args) => {
       if (args.length !== 0 && args.length !== 2) args.usage();
       const document = args.length === 0
@@ -50,6 +58,10 @@ export class CommandRegistry {
       const size = args.length === 0 ? session.canvas() : session.canvas(args.number(0, "width"), args.number(1, "height"));
       return [`canvas ${args.length ? "resized to " : ""}${size.width}x${size.height}`];
     });
+  }
+
+  private registerEditingCommands(): void {
+    const session = this.session, presenter = this.presenter;
     this.register("create", "create <type> <id> [params...] [in <containerId>]", (args) => this.create(args));
     this.register("delete", "delete <id>", (args) => {
       args.count(1);
@@ -115,6 +127,10 @@ export class CommandRegistry {
     });
     this.register("front", "front <id>", (args) => this.zOrder(args, FrontCommand, "front"));
     this.register("back", "back <id>", (args) => this.zOrder(args, BackCommand, "back"));
+  }
+
+  private registerQueryCommands(): void {
+    const session = this.session, presenter = this.presenter;
     this.register("tree", "tree [id]", (args) => {
       args.count(0, 1);
       return session.executor.executeQuery(() => presenter.tree(session.requireDocument(), args.length ? args.value(0) : undefined));
@@ -127,6 +143,10 @@ export class CommandRegistry {
       args.count(0);
       return session.executor.executeQuery(() => this.help());
     });
+  }
+
+  private registerHistoryCommands(): void {
+    const session = this.session;
     this.register("undo", "undo", (args) => {
       args.count(0);
       session.requireDocument();

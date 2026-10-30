@@ -1,11 +1,6 @@
 import type { Command } from "../commands/Command.js";
-
-export class HistoryError extends Error {
-  public constructor(message: string) {
-    super(message);
-    this.name = "HistoryError";
-  }
-}
+import { HistoryError } from "./HistoryError.js";
+export { HistoryError } from "./HistoryError.js";
 
 export class CommandHistory {
   private readonly undoStack: Command[] = [];

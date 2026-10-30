@@ -1,6 +1,6 @@
 import type { Document, RemovedShape } from "../domain/index.js";
 import { DomainError } from "../domain/errors.js";
-import { Group } from "../domain/Group.js";
+import type { Group } from "../domain/Group.js";
 import { StatefulCommand } from "./Command.js";
 import { resolveGroup } from "./HierarchyUtils.js";
 import { resolveShape, type ShapeTarget } from "./utils.js";
@@ -50,7 +50,7 @@ export class AddToCommand extends StatefulCommand {
         `cannot move a container into its own descendant: ${shape.id}`,
       );
     }
-    if (shape instanceof Group && shape.containsDescendant(group)) {
+    if (shape.containsDescendant(group)) {
       throw new DomainError(
         "cycle",
         `cannot move a container into its own descendant: ${shape.id}`,

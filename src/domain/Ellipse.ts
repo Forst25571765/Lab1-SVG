@@ -21,8 +21,8 @@ export class Ellipse extends Shape {
     super(id, "ellipse", options);
     this._cx = Shape.assertFinite(cx, "cx");
     this._cy = Shape.assertFinite(cy, "cy");
-    this._rx = Shape.assertFinite(rx, "rx");
-    this._ry = Shape.assertFinite(ry, "ry");
+    this._rx = Shape.assertNonNegative(rx, "rx");
+    this._ry = Shape.assertNonNegative(ry, "ry");
   }
 
   public get cx(): number {
@@ -57,8 +57,8 @@ export class Ellipse extends Shape {
   protected prepareScale(factor: number): () => void {
     const cx = Shape.assertFinite(this._cx * factor, "cx");
     const cy = Shape.assertFinite(this._cy * factor, "cy");
-    const rx = Shape.assertFinite(this._rx * factor, "rx");
-    const ry = Shape.assertFinite(this._ry * factor, "ry");
+    const rx = Shape.assertNonNegative(this._rx * factor, "rx");
+    const ry = Shape.assertNonNegative(this._ry * factor, "ry");
     return () => {
       this._cx = cx;
       this._cy = cy;
@@ -91,10 +91,10 @@ export class Ellipse extends Shape {
         this._cy = Shape.assertFinite(value, attribute);
         return;
       case "rx":
-        this._rx = Shape.assertFinite(value, attribute);
+        this._rx = Shape.assertNonNegative(value, attribute);
         return;
       case "ry":
-        this._ry = Shape.assertFinite(value, attribute);
+        this._ry = Shape.assertNonNegative(value, attribute);
         return;
       default:
         Shape.rejectUnknownAttribute(attribute);

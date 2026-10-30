@@ -2,7 +2,7 @@
 
 ## 文档状态
 
-当前已完成步骤一至六：项目脚手架、领域模型、编辑命令与历史、层级和 z-order、SVG 读写与文档会话，以及真实 CLI 解析、全命令接线和文本输出。实现过程中如果目录、依赖方向或设计模式发生变化，应在本文档的过程记录和一致性自查中更新。各步骤的具体记录见下方 `S1.md` 至 `S6.md`。
+当前已完成步骤一至七：项目脚手架、领域模型、编辑命令与历史、层级和 z-order、SVG 读写与文档会话、真实 CLI，以及综合测试与重构。实现过程中如果目录、依赖方向或设计模式发生变化，应在本文档的过程记录和一致性自查中更新。各步骤的具体记录见下方 `S1.md` 至 `S7.md`。
 
 2026-10-30 补充修正了 `front/back` 的视觉顺序，并提前实现了应用层的同步查询/文档操作历史策略及画布尺寸失败原子性。规范见 [验收规格的语义澄清](./acceptance-spec.md#语义澄清2026-10-30)，修订验证见 [S4.md](./S4.md)。该次修订只覆盖内存操作，实际 SVG 读写在下述 S5 中完成。
 
@@ -15,6 +15,10 @@
 同日按用户要求增加 `npm run preview:s5`：通过仅监听 127.0.0.1 的固定路由服务生成六组独立测试样例。Edge 中加载、SVG DOM、保存读回、中文与继承样式、ID 补全及 front/back 截图像素检查均通过；控制台无警告或错误。全量 235 个测试、含脚本的类型检查和构建再次通过。该入口是开发验收辅助工具，未改动 CLI 或生产业务逻辑，未提交代码。
 
 上述 S5 工作随后经用户授权统一提交并推送，提交为 `0888fd2`。同日完成 S6：解析器、参数检查、19 条命令注册、tree/show/help、单行错误及撤销重做摘要，main.ts 接入同一个 DocumentSession。含用户要求收紧 init 参数及支持行末注释后的回归，共新增 93 个测试，全量 14 个文件、328 个测试、类型检查和构建通过。实际 CLI 生成的五组 SVG 经独立 HTTP 入口通过 Edge 加载、DOM、中文和截图像素检查，后续修订未改变这些样例使用的语法；详见 [S6.md](./S6.md)。用户随后授权将相关代码、测试和文档合并为一笔本地提交，本次不推送或创建 tag。
+
+同日完成 S7：在 328 个基线测试上新增 139 个用例，完整复核命令、错误、历史、树形输出及典型会话。三个先失败的用例复现 SVG 文本中回车字符保存读回失真，修复后通过；提取几何命令快照流程、分组注册方法并将类移到同名文件。最终 18 个文件、467 个测试、类型检查、构建和 lint 通过，57 个源文件的架构检查无违规。过程、矩阵和边界见 [S7.md](./S7.md)。步骤七与下述非负值修复的代码、测试和文档按用户授权统一纳入本次本地提交；未推送或创建 tag，S8 发布尚未执行。
+
+2026-10-31 按用户要求只修复评审第一项：领域层拒绝负的画布/矩形宽高、圆/椭圆半径及描边宽度，保留零值和负坐标。新增 64 个回归用例，修复前 57 失败、7 通过，修复后全部通过；当前全量 19 个文件、531 个测试、类型检查、构建和 lint 通过。规则见 [验收规格](./acceptance-spec.md)，过程见 [S7.md](./S7.md) 补充记录。
 
 原始实验文档：[`phase_cli_1.md`](<C:/Users/Lenovo/Desktop/高级软件开发技术/lab1/doc/phase_cli_1.md>)。
 
@@ -29,6 +33,7 @@
 - [`S4.md`](./S4.md)：步骤四新增代码、功能、测试和结果。
 - [`S5.md`](./S5.md)：步骤五 SVG 读写、文档会话、路径与历史策略、定向检查和浏览器验收边界。
 - [`S6.md`](./S6.md)：步骤六 CLI 语法、全命令接线、Visitor 展示、93 个新增测试和实际 CLI 输出的浏览器验收。
+- [`S7.md`](./S7.md)：步骤七完整测试矩阵、SVG 文本回归修复、重构、139 个新增测试和架构检查。
 
 ## 架构方案
 
@@ -58,6 +63,8 @@
 
 具体命令负责保存参数、调用接收者和保存撤销所需的状态，图形业务规则由领域对象负责。
 
+S7 提取 GeometryCommand 作为移动/缩放的共同基类，统一状态检查、子树快照和撤销；MoveCommand/ScaleCommand 各自实现 transform 并调用 Shape 的对应行为。这是命令内部的模板方法复用，不改变 Command 的公开接口和历史规则。
+
 #### Composite 语义
 
 `Shape` 作为统一抽象，叶子图形和 `Group` 都支持 `move`、`scale`、`set`、`delete`。`move/scale` 由基类遍历整个子树，各具体图形通过 `prepareMove/prepareScale` 计算并校验自己的结果；全部准备完成后才提交。Group 本身没有几何字段，保留有序子节点并参与统一遍历。几何规则仍由具体图形负责，没有增加按图形名称分派。
@@ -81,8 +88,11 @@ main.ts（Composition Root）
 
 - `domain` 不依赖 CLI、Node 文件系统或 XML 库；
 - `commands` 依赖领域抽象，不直接解析命令行文本；
+- `application` 可依赖 commands、domain 和自身 ports；ports 只依赖 domain 或其他 ports；
 - `cli` 不直接修改图形内部字段；
+- `cli` 作为命令接线层可使用 application、commands 和 domain 的公共接口；
 - `infrastructure` 通过 `ports` 提供外部实现；
+- `infrastructure` 可使用 domain、Node 和 XML 库，不依赖 CLI 或具体应用服务；
 - `main.ts` 负责依赖注入和对象装配；
 - 按名字分派只保留在 `CommandRegistry` 和 `ShapeFactory` 两处。
 
@@ -99,10 +109,15 @@ CLI 的 create 参数、set 数值校验和 help 使用 ShapeFactory 的同一�
 ```plantuml
 @startuml
 [CLI] --> [Application]
+[CLI] --> [Commands]
+[CLI] --> [Domain]
 [Application] --> [Commands]
+[Application] --> [Domain]
 [Commands] --> [Domain]
 [Application] --> [Ports]
+[Ports] --> [Domain]
 [Infrastructure] ..|> [Ports]
+[Infrastructure] --> [Domain]
 [Composition Root] --> [CLI]
 [Composition Root] --> [Application]
 [Composition Root] --> [Infrastructure]
@@ -144,6 +159,8 @@ init 最初允许单参数并采用默认高度，后明确要求收紧为只接
 
 原本未支持行末注释，在分词时识别引号外独立的 #，保留颜色及文字/路径内的 #，并同步 help。
 
+
+
 ### 6. 一致性自查
 
 实现完成后检查：
@@ -153,7 +170,9 @@ init 最初允许单参数并采用默认高度，后明确要求收紧为只接
 3. 是否仍然只有命令注册和图形工厂使用名字分派；
 4. 目录或依赖发生变化时，是否补充了修订记录。
 
-S6 自查：新增代码位于既定 cli/domain/scripts/tests 目录；抽查 domain 无 CLI、Node 或 XML 库依赖，CLI 不导入内部 treeMutation，也不直接写图形字段。新的图形展示采用 Visitor，类型名构造分派仍集中在工厂，命令名分派集中在注册表；接口变更与未来扩展代价已在上文记录。S7 仍需进行整体质量和重构评审。
+S6 自查：新增代码位于既定 cli/domain/scripts/tests 目录；抽查 domain 无 CLI、Node 或 XML 库依赖，CLI 不导入内部 treeMutation，也不直接写图形字段。新的图形展示采用 Visitor，类型名构造分派仍集中在工厂，命令名分派集中在注册表。
+
+S7 全量自查：实际源目录与原模块方案一致；GeometryCommand 和同名错误类均归入已有模块，旧入口保留重导出。57 个源文件经 AST 检查和人工复核，无违规依赖；领域层不依赖 CLI 或基础设施。类与文件同名，内部结构写入入口未向外层开放，名字分派仍集中于两处。属性白名单 switch 与容器资格校验保留，理由见 S7 的重构与依赖检查。PlantUML 已补齐实际存在的 CLI→commands/domain、application→domain、ports/infrastructure→domain 依赖。
 
 ### 7. 质量保证手段
 
@@ -165,6 +184,6 @@ S6 自查：新增代码位于既定 cli/domain/scripts/tests 目录；抽查 do
 - 运行测试、TypeScript 构建和代码检查；
 - 将保存出的 SVG 在浏览器中打开，检查渲染结果。
 
-S6 已实际执行全量 328 个测试、类型检查和构建，真实 CLI 输出的五组 Edge 浏览器专项已有独立记录；后者独立于 Vitest 计数。当前没有配置独立 lint 脚本，不将未运行的 lint 记为通过。最终发布、提交历史和 final tag 的检查留给 S8。
+S6 当时执行了全量 328 个测试、类型检查和构建，并有独立的 Edge 浏览器专项记录。S7 连同 2026-10-31 非负值回归修复，当前全量为 531 个测试，已运行类型检查、构建及新增的 `npm run lint`。lint 包括未使用声明、隐式返回、switch 穿透检查及架构规则；检查器自身有 27 个正反例测试。真实 REPL 和文件测试已复跑，构建产物会话通过；本次未重复浏览器截图专项，也未统计行/分支覆盖率。最终发布、提交历史和 final tag 的检查留给 S8。
 
 

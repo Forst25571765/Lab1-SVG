@@ -78,9 +78,6 @@ export class GroupCommand extends StatefulCommand {
       (left, right) => (order.get(left) ?? 0) - (order.get(right) ?? 0),
     );
     for (const container of orderedTargets) {
-      if (!(container instanceof Group)) {
-        continue;
-      }
       for (const descendant of orderedTargets) {
         if (container !== descendant && container.containsDescendant(descendant)) {
           throw new DomainError(

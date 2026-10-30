@@ -27,7 +27,7 @@ export abstract class Shape {
     this._stroke = options.stroke;
     const strokeWidth = options.strokeWidth ?? options["stroke-width"];
     if (strokeWidth !== undefined) {
-      this._strokeWidth = toFiniteNumber(strokeWidth, "stroke-width");
+      this._strokeWidth = toNonNegativeNumber(strokeWidth, "stroke-width");
     }
   }
 
@@ -103,7 +103,7 @@ export abstract class Shape {
         this._stroke = String(value);
         return;
       case "stroke-width":
-        this._strokeWidth = toFiniteNumber(value, attribute);
+        this._strokeWidth = toNonNegativeNumber(value, attribute);
         return;
       default:
         this.setSpecificAttribute(attribute, value);
@@ -175,6 +175,10 @@ export abstract class Shape {
     return toFiniteNumber(value, label);
   }
 
+  protected static assertNonNegative(value: number | string, label: string): number {
+    return toNonNegativeNumber(value, label);
+  }
+
   protected static assertScaleFactor(factor: number): number {
     const numericFactor = toFiniteNumber(factor, "scale factor");
     if (numericFactor <= 0) {
@@ -192,6 +196,15 @@ export function toFiniteNumber(value: number | string, label: string): number {
   const numericValue = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(numericValue)) {
     throw new DomainError("invalid-number", `invalid number for ${label}`);
+  }
+  return numericValue;
+}
+
+/** SVG dimensions, radii and stroke widths allow zero, but not negative values. */
+export function toNonNegativeNumber(value: number | string, label: string): number {
+  const numericValue = toFiniteNumber(value, label);
+  if (numericValue < 0) {
+    throw new DomainError("invalid-number", `invalid number for ${label}: must be non-negative`);
   }
   return numericValue;
 }

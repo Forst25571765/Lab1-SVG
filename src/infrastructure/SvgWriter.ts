@@ -15,8 +15,11 @@ export class SvgWriter implements SvgWriterPort {
     for (const shape of document.children) {
       root.appendChild(this.writeShape(xml, shape));
     }
-    return '<?xml version="1.0" encoding="UTF-8"?>\n'
-      + new XMLSerializer().serializeToString(xml, { requireWellFormed: true }) + "\n";
+    // XML parsers normalize literal CR/CRLF in text. Character references preserve
+    // imported &#13; exactly; serialize first so ordinary ampersands stay escaped.
+    const serialized = new XMLSerializer().serializeToString(xml, { requireWellFormed: true })
+      .replace(/\r/g, "&#13;");
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' + serialized + "\n";
   }
 
   private writeShape(xml: XmlDocument, shape: Shape): Element {

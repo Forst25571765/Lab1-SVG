@@ -1,6 +1,6 @@
 import { Group } from "./Group.js";
 import { DomainError, duplicateId, noSuchContainer, noSuchShape, notAContainer } from "./errors.js";
-import { Shape, toFiniteNumber } from "./Shape.js";
+import { Shape, toNonNegativeNumber } from "./Shape.js";
 import { insertGroupChild, removeGroupChild, setShapeLocation } from "./internal/treeMutation.js";
 
 export type ShapeParent = Group | string | null | undefined;
@@ -17,8 +17,8 @@ export class Document {
   readonly #children: Shape[] = [];
 
   public constructor(width = 800, height = 600) {
-    this._width = toFiniteNumber(width, "width");
-    this._height = toFiniteNumber(height, "height");
+    this._width = toNonNegativeNumber(width, "width");
+    this._height = toNonNegativeNumber(height, "height");
   }
 
   public static createEmpty(width = 800, height = 600): Document {
@@ -46,8 +46,8 @@ export class Document {
   }
 
   public setCanvasSize(width: number, height: number): void {
-    const nextWidth = toFiniteNumber(width, "width");
-    const nextHeight = toFiniteNumber(height, "height");
+    const nextWidth = toNonNegativeNumber(width, "width");
+    const nextHeight = toNonNegativeNumber(height, "height");
     this._width = nextWidth;
     this._height = nextHeight;
   }

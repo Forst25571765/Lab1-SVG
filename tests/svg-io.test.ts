@@ -11,6 +11,27 @@ const svg = (content: string, attributes = "") =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200" ${attributes}>${content}</svg>`;
 
 describe("SVG read and write", () => {
+  it("distinguishes a literal character-reference string from an actual carriage return", () => {
+    const document = new Document();
+    const text = "literal &#13; &amp; versus actual\rreturn";
+    document.add(new Text("t", 0, 0, text));
+    const copy = reader.read(writer.write(document)).document;
+    expect(copy.requireShape("t").getAttribute("text")).toBe(text);
+  });
+
+  it.each(["first\rsecond", "first\r\nsecond", "first\t中😀\r\n<&>second"])(
+    "preserves XML character-reference text through repeated save/read: %j", (content) => {
+      const document = reader.read(svg(`<text id="t" x="1" y="2">${content
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\r/g, "&#13;")}</text>`)).document;
+      expect(document.requireShape("t").getAttribute("text")).toBe(content);
+      let copy = document;
+      for (let round = 0; round < 3; round++) {
+        copy = reader.read(writer.write(copy)).document;
+        expect(copy.requireShape("t").getAttribute("text")).toBe(content);
+      }
+    },
+  );
+
   it("writes a valid empty canvas with namespace, dimensions and matching viewBox", () => {
     const output = writer.write(new Document());
     expect(output).toContain('xmlns="http://www.w3.org/2000/svg"');

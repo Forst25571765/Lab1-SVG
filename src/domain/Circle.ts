@@ -19,7 +19,7 @@ export class Circle extends Shape {
     super(id, "circle", options);
     this._cx = Shape.assertFinite(cx, "cx");
     this._cy = Shape.assertFinite(cy, "cy");
-    this._r = Shape.assertFinite(r, "r");
+    this._r = Shape.assertNonNegative(r, "r");
   }
 
   public get cx(): number {
@@ -50,7 +50,7 @@ export class Circle extends Shape {
   protected prepareScale(factor: number): () => void {
     const cx = Shape.assertFinite(this._cx * factor, "cx");
     const cy = Shape.assertFinite(this._cy * factor, "cy");
-    const r = Shape.assertFinite(this._r * factor, "r");
+    const r = Shape.assertNonNegative(this._r * factor, "r");
     return () => {
       this._cx = cx;
       this._cy = cy;
@@ -80,7 +80,7 @@ export class Circle extends Shape {
         this._cy = Shape.assertFinite(value, attribute);
         return;
       case "r":
-        this._r = Shape.assertFinite(value, attribute);
+        this._r = Shape.assertNonNegative(value, attribute);
         return;
       default:
         Shape.rejectUnknownAttribute(attribute);

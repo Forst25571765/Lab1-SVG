@@ -12,6 +12,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.test.json",
+    "lint": "tsc -p tsconfig.lint.json && tsx scripts/check-architecture.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "cli": "tsx src/main.ts",

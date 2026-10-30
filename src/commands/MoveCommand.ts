@@ -1,39 +1,18 @@
-import type { Document } from "../domain/index.js";
-import { StatefulCommand } from "./Command.js";
-import {
-  captureShapeSnapshot,
-  resolveShape,
-  restoreShapeSnapshot,
-  type ShapeSnapshot,
-  type ShapeTarget,
-} from "./utils.js";
+import type { Document, Shape } from "../domain/index.js";
+import { GeometryCommand } from "./GeometryCommand.js";
+import type { ShapeTarget } from "./utils.js";
 
-export class MoveCommand extends StatefulCommand {
-  private snapshot: ShapeSnapshot | undefined;
-
+export class MoveCommand extends GeometryCommand {
   public constructor(
-    private readonly document: Document,
-    private readonly target: ShapeTarget,
+    document: Document,
+    target: ShapeTarget,
     private readonly dx: number,
     private readonly dy: number,
   ) {
-    super();
+    super(document, target);
   }
 
-  public execute(): void {
-    this.ensureCanExecute();
-    const shape = resolveShape(this.document, this.target);
-    this.snapshot = captureShapeSnapshot(shape);
+  protected transform(shape: Shape): void {
     shape.move(this.dx, this.dy);
-    this.markExecuted();
-  }
-
-  public undo(): void {
-    this.ensureCanUndo();
-    if (this.snapshot === undefined) {
-      throw new Error("move command has no snapshot");
-    }
-    restoreShapeSnapshot(this.snapshot);
-    this.markUndone();
   }
 }

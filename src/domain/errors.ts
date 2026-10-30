@@ -1,31 +1,6 @@
-export type DomainErrorCode =
-  | "invalid-id"
-  | "invalid-number"
-  | "invalid-attribute"
-  | "invalid-specification"
-  | "duplicate-id"
-  | "no-such-shape"
-  | "no-such-container"
-  | "not-a-container"
-  | "shape-already-attached"
-  | "cycle"
-  | "unknown-shape-type"
-  | "scale-factor-not-positive"
-  | "invalid-parent";
-
-/**
- * Domain errors deliberately do not contain the CLI's `error:` prefix.
- * The later CLI layer can map this stable message to its output contract.
- */
-export class DomainError extends Error {
-  public readonly code: DomainErrorCode;
-
-  public constructor(code: DomainErrorCode, message: string) {
-    super(message);
-    this.name = "DomainError";
-    this.code = code;
-  }
-}
+import { DomainError } from "./DomainError.js";
+export { DomainError } from "./DomainError.js";
+export type { DomainErrorCode } from "./DomainError.js";
 
 export function duplicateId(id: string): DomainError {
   return new DomainError("duplicate-id", `id already exists: ${id}`);
