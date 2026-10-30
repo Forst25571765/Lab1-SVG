@@ -191,13 +191,15 @@ main.ts（Composition Root）
 工作内容：
 
 - 实现 `SvgReader` 和 `SvgWriter`；
-- 实现 `read`、`save`、`canvas`；
+- 实现 `read`、`save`、`canvas` 的应用层操作，补齐 `init` 的当前文档替换和路径重置；
 - 将 `canvas` 无参数形式作为查询，完整保留两栈及禁用状态；`init`、`read`、`save` 和带参数修改尺寸的 `canvas` 成功后清空两栈并禁止 undo/redo，直到下一条编辑命令成功；
 - 处理外部 SVG 缺失 ID 的自动分配和 warning；
 - 隔离真实文件系统和 XML 解析库；
 - 接入文档操作的历史边界：失败操作不改变文档或历史，成功编辑只能开启边界后的新历史。
 
-2026-10-30 已在应用层提供同步操作入口：`execute` 处理可撤销编辑，`executeQuery` 处理只读查询，`executeDocument` 在文档操作成功返回后建立历史边界。当前使用内存画布和文档替换验证；文件端口、实际 read/save 及 CLI 接线仍属于本步骤和步骤 6。后续若使用异步文件端口，需在等待操作成功后建立边界，并补充异步失败测试，不能把 Promise 直接传给当前同步文档操作入口。
+2026-10-30 已完成 DocumentSession、同步文件及 SVG 端口、实际 SvgReader/SvgWriter 和 NodeFileSystem，复用现有 `executeQuery` / `executeDocument` 历史入口。定向 46 个测试通过，路径、SVG 支持范围及检查记录见 [S5.md](./S5.md)。CLI 接线留给步骤 6；首次 file 预览受限，随后经独立且获准访问的 HTTP 测试入口完成 Edge 自动验收。后续若使用异步文件端口，需在等待操作成功后建立边界，并补充异步失败测试，不能把 Promise 直接传给当前同步文档操作入口。
+
+同日按用户要求追加全量复核：`npm test` 为 10 个文件、235 个测试全部通过，typecheck/build/diff 检查通过。随后新增 `npm run preview:s5` 并完成六组样例的 Edge 加载、DOM、文字、样式和截图像素检查，浏览器专项通过；全量测试及检查再次通过。该浏览器验证单独执行，不把自动单元测试当作浏览器验收。
 
 原文档参照：第 0 节 SVG 文件格式和预览，第 3 节文档命令，第 4.2 节文件错误，第 4.3 节文档命令的历史边界，以及第 6 节 `read`/`save` 会话。
 

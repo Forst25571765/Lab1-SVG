@@ -176,6 +176,10 @@ DOMAIN-T26 至 T30 的数值和整树原子性由 `tests/geometry-safety.test.ts
 
 建议注入 `FileSystem` 和 `SvgCodec` 接口，在单元测试中使用内存实现，避免测试依赖真实路径。
 
+S5 已以同步 FileSystem、SvgReaderPort、SvgWriterPort 落地上述边界。新增 svg-io（16）、document-session（16）、node-filesystem（3）共 35 个定向用例，加上已有 history-policy 的 11 个，共 46 个通过。覆盖 IO-T01 至 T04、T10 至 T15 对应的应用/IO 行为，以及保存路径、非法 SVG、ID 防冲突和序列化失败；CLI 的实际输出仍待 S6。IO-T05 首次 file 预览受阻，随后通过独立 HTTP 测试入口完成六组样例的 Edge 自动验证，包含加载、DOM、文字、继承样式及截图像素检查，现已通过。记录见 [S5.md](./S5.md)。
+
+随后按用户要求运行了完整 `npm test`：10 个文件、235 个测试全部通过；类型检查与构建通过。浏览器专项独立通过，不计入 235 个单元/集成用例；CLI 业务和完整命令行会话仍待后续验收。
+
 ## 7. 显示命令测试
 
 | ID | 命令 | 断言 |
@@ -248,4 +252,4 @@ undo
 5. 在测试保护下重构；
 6. 再运行完整测试集。
 
-当前已经实现框架 smoke test、领域、Command、层级测试，以及 `tests/history-policy.test.ts` 的内存历史策略、`tests/geometry-safety.test.ts` 的移动/溢出原子性、`tests/hierarchy-integrity.test.ts` 的接口保护和混合命令回放。CLI 业务解析、SVG IO、实际文件失败和浏览器重叠渲染测试仍待对应步骤实现，不能以内存测试代替端到端验收。
+当前已经实现框架 smoke test、领域、Command、层级测试，以及 `tests/history-policy.test.ts` 的内存历史策略、`tests/geometry-safety.test.ts` 的移动/溢出原子性、`tests/hierarchy-integrity.test.ts` 的接口保护和混合命令回放。S5 另完成 SVG IO、应用层文档操作及实际文件失败检查，全量 235 个测试通过；本地渲染和独立 HTTP 页面的 Edge 浏览器自动检查也已通过。CLI 业务解析及完整命令行会话仍待后续验收，不能用当前集合代替最终端到端验收。

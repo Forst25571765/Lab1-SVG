@@ -21,7 +21,11 @@ doc/test-draft.md           # 分层测试草稿
 doc/acceptance-results.md   # 当前阶段实测验收结果
 ```
 
-## 实现范围
+## 当前进度
+
+S1–S5 的领域模型、编辑命令、历史管理、SVG 读写及应用层文档操作已实现。S5 的接口、支持边界和定向验证见 [doc/S5.md](./doc/S5.md)。CLI 业务解析、tree/show/help 与统一文本输出留给 S6；当前 REPL 仍为脚手架。
+
+## 目标范围
 
 - 支持 `init`、`read`、`save`、`canvas`；
 - 支持图形创建、删除、移动、缩放、属性设置和层级操作；
@@ -29,6 +33,16 @@ doc/acceptance-results.md   # 当前阶段实测验收结果
 - 使用 Command 模式实现 undo/redo；
 - 使用面向对象模型统一处理叶子图形和 `g` 容器；
 - `box` 属于后续插件化阶段，本阶段暂不实现。
+
+## S5 HTTP 预览
+
+```text
+npm run preview:s5
+```
+
+启动后打开 [S5 HTTP 浏览器验收页](http://127.0.0.1:8765/)。服务仅监听本机回环地址，提供六组重新生成的测试样例；不开放项目目录。终端运行期间保持服务，按 Ctrl+C 停止。需要更换端口时可设置 `S5_PREVIEW_PORT`。
+
+六组样例的 Edge 自动检查已通过，真实截图与报告保存在 `tmp/s5-http-preview/`，详见 [S5.md](./doc/S5.md)。预览命令负责生成样例和启动服务，浏览器检查独立执行。
 
 ## 开发方式
 
