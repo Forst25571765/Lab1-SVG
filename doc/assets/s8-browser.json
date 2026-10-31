@@ -1,0 +1,237 @@
+{
+  "checkedAt": "2026-10-31T03:23:54.008Z",
+  "sourceCommit": "8eff0ff7674dfec46087419c9939367d36bb3d38",
+  "browser": "Codex in-app browser",
+  "fixture": "S6CliPreviewServer with current src/main.ts",
+  "images": [
+    {
+      "height": 600,
+      "key": "flowchart",
+      "loaded": true,
+      "src": "/assets/flowchart.svg",
+      "width": 800
+    },
+    {
+      "height": 600,
+      "key": "roundtrip",
+      "loaded": true,
+      "src": "/assets/roundtrip.svg",
+      "width": 800
+    },
+    {
+      "height": 120,
+      "key": "front",
+      "loaded": true,
+      "src": "/assets/front.svg",
+      "width": 120
+    },
+    {
+      "height": 120,
+      "key": "back",
+      "loaded": true,
+      "src": "/assets/back.svg",
+      "width": 120
+    },
+    {
+      "height": 160,
+      "key": "imported",
+      "loaded": true,
+      "src": "/assets/imported.svg",
+      "width": 400
+    }
+  ],
+  "flowchart": {
+    "height": "600",
+    "namespace": "http://www.w3.org/2000/svg",
+    "nodes": [
+      {
+        "attributes": [
+          [
+            "id",
+            "flowchart"
+          ]
+        ],
+        "id": "flowchart",
+        "parent": "svg",
+        "tag": "g",
+        "text": null
+      },
+      {
+        "attributes": [
+          [
+            "id",
+            "node1"
+          ]
+        ],
+        "id": "node1",
+        "parent": "flowchart",
+        "tag": "g",
+        "text": null
+      },
+      {
+        "attributes": [
+          [
+            "id",
+            "start"
+          ],
+          [
+            "fill",
+            "#4a90d9"
+          ],
+          [
+            "x",
+            "120"
+          ],
+          [
+            "y",
+            "100"
+          ],
+          [
+            "width",
+            "160"
+          ],
+          [
+            "height",
+            "60"
+          ]
+        ],
+        "id": "start",
+        "parent": "node1",
+        "tag": "rect",
+        "text": null
+      },
+      {
+        "attributes": [
+          [
+            "id",
+            "start-label"
+          ],
+          [
+            "x",
+            "155"
+          ],
+          [
+            "y",
+            "135"
+          ]
+        ],
+        "id": "start-label",
+        "parent": "node1",
+        "tag": "text",
+        "text": "开始"
+      },
+      {
+        "attributes": [
+          [
+            "id",
+            "node2"
+          ]
+        ],
+        "id": "node2",
+        "parent": "flowchart",
+        "tag": "g",
+        "text": null
+      },
+      {
+        "attributes": [
+          [
+            "id",
+            "process"
+          ],
+          [
+            "fill",
+            "#f5a623"
+          ],
+          [
+            "x",
+            "520"
+          ],
+          [
+            "y",
+            "100"
+          ],
+          [
+            "width",
+            "160"
+          ],
+          [
+            "height",
+            "60"
+          ]
+        ],
+        "id": "process",
+        "parent": "node2",
+        "tag": "rect",
+        "text": null
+      },
+      {
+        "attributes": [
+          [
+            "id",
+            "process-label"
+          ],
+          [
+            "x",
+            "545"
+          ],
+          [
+            "y",
+            "135"
+          ]
+        ],
+        "id": "process-label",
+        "parent": "node2",
+        "tag": "text",
+        "text": "处理数据 v2"
+      },
+      {
+        "attributes": [
+          [
+            "id",
+            "arrow1"
+          ],
+          [
+            "stroke",
+            "black"
+          ],
+          [
+            "x1",
+            "280"
+          ],
+          [
+            "y1",
+            "130"
+          ],
+          [
+            "x2",
+            "520"
+          ],
+          [
+            "y2",
+            "130"
+          ]
+        ],
+        "id": "arrow1",
+        "parent": "flowchart",
+        "tag": "line",
+        "text": null
+      }
+    ],
+    "width": "800"
+  },
+  "roundtripDomEqual": true,
+  "logs": [
+    {
+      "level": "error",
+      "message": "Uncaught (in promise) TypeError: Cannot use 'in' operator to search for 'animation' in undefined",
+      "timestamp": "2026-10-31T03:23:17.055Z"
+    },
+    {
+      "level": "error",
+      "message": "Uncaught (in promise) TypeError: Cannot use 'in' operator to search for 'animation' in undefined",
+      "timestamp": "2026-10-31T03:23:33.888Z"
+    }
+  ],
+  "screenshot": "s8-browser.jpg",
+  "visualInspection": "Chinese labels and connecting line render; front overlap is red, back overlap is blue."
+}

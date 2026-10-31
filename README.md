@@ -11,7 +11,7 @@ src/
 ├── application/            # 命令执行、历史记录和应用协调
 │   └── ports/              # 文件、SVG 编解码和输出接口
 ├── infrastructure/         # 文件系统、SVG 读写等外部技术实现
-├── cli/                    # REPL、命令解析和帮助信息
+├── cli/                    # 命令解析、注册、帮助和图形展示
 └── main.ts                 # 依赖装配和逐行 REPL 入口
 tests/                      # 单元测试和集成测试
 doc/README.md               # 实验要求对应的架构与过程文档
@@ -23,7 +23,17 @@ doc/acceptance-results.md   # S1 历史验收记录；当前结果见各阶段 S
 
 ## 当前进度
 
-S1–S7 已完成：领域模型、编辑与历史管理、SVG 读写、全部 19 条 CLI 命令，以及综合测试和重构。2026-10-31 补充非负尺寸、半径和描边宽度校验后，当前 19 个测试文件、531 个测试全部通过，类型检查、构建和 lint 通过；57 个源文件的架构检查没有违规。S7 同时修复了 SVG 回车字符保存读回的问题，完整矩阵与结果见 [doc/S7.md](./doc/S7.md)。CLI 语法见 [doc/S6.md](./doc/S6.md)，SVG 支持边界见 [doc/S5.md](./doc/S5.md)。S5/S6 已有独立浏览器验收记录，本次未重复该专项。步骤七与非负值修复的代码、测试和文档按用户授权统一纳入本次本地提交；S8 最终发布尚未执行。
+S1–S7 已完成并推送到远程 `main`，代码基线为 `8eff0ff`。S8 的最终文档、架构自查、构建产物会话和浏览器核验已完成：19 个测试文件、531 个测试全部通过，类型检查、构建和 lint 通过；57 个生产源文件没有架构违规。详细证据、可复现操作和已知边界见 [doc/S8.md](./doc/S8.md)。
+
+本轮 S8 文档和证据纳入本地提交，尚未创建 `final` 标签或推送本轮提交。CLI 语法见 [doc/S6.md](./doc/S6.md)，SVG 支持边界见 [doc/S5.md](./doc/S5.md)，完整测试矩阵见 [doc/S7.md](./doc/S7.md)。
+
+## 安装依赖
+
+本轮验收环境为 Node.js v22.16.0、npm 10.9.2。首次取得仓库后，在项目根目录使用锁文件安装依赖：
+
+```text
+npm ci
+```
 
 ## 启动 CLI
 
@@ -47,6 +57,8 @@ save "示例 drawing.svg"
 `init` 只允许不传尺寸（默认 800×600）或同时提供宽高，单参数会报用法错误。`help` 可在初始化前查看全部语法；空行和以 `#` 开头的整行会跳过；命令后可用独立的 `#` 添加行末注释，例如 `move r1 10 0 # 向右移动`，颜色和引号内的 # 保留。保存成功会清空旧历史，下一条成功编辑开启新历史。Windows 终端按 Ctrl+Z 后回车结束输入，其他终端可发送 EOF。
 
 画布和矩形宽高、圆和椭圆半径、`stroke-width` 必须是有限且非负的数；零值和负坐标合法。例如 `set r1 width -1` 报 `error: invalid number for width: must be non-negative`，文档和历史保持原样。SVG 读入也执行相同规则，详见 [验收规格](./doc/acceptance-spec.md)。
+
+运行 `npm run build` 后可用 `node dist/main.js` 启动构建产物。[最终会话](./doc/examples/final-session.txt) 和 [对应 SVG](./doc/examples/final-flowchart.svg) 随仓库提供；批量回放方式、两条预期错误及最终坐标见 [S8](./doc/S8.md)。
 
 ## 目标范围
 
@@ -89,5 +101,5 @@ npm run build
 按 `Test → Code → Refactor` 迭代，每个阶段在用户明确授权后单独提交 Git commit。完成全部功能和验证并获得发布授权后，在最终提交上创建 `final` tag。
 
 
-详细的分阶段实现、验收条件、测试清单和 Git 提交节奏见 [doc/implementation-plan.md](<C:/Users/Lenovo/Desktop/高级软件开发技术/lab1/doc/implementation-plan.md>)。
+详细的分阶段实现、验收条件、测试清单和 Git 提交节奏见 [doc/implementation-plan.md](./doc/implementation-plan.md)。
 

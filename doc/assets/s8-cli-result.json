@@ -1,0 +1,32 @@
+{
+  "checkedAt": "2026-10-31T03:39:00.106Z",
+  "sourceCommit": "8eff0ff7674dfec46087419c9939367d36bb3d38",
+  "node": "v22.16.0",
+  "platform": "win32",
+  "entry": "dist/main.js",
+  "session": "../examples/final-session.txt",
+  "exitCode": 0,
+  "stderr": "",
+  "expectedErrors": [
+    "invalid number for width: must be non-negative",
+    "undo not allowed after io command"
+  ],
+  "dimensions": [
+    800,
+    600
+  ],
+  "elementCount": 8,
+  "process": {
+    "fill": "#f5a623",
+    "x": 520,
+    "y": 200,
+    "width": 160,
+    "height": 60
+  },
+  "label": {
+    "x": 545,
+    "y": 235,
+    "text": "处理数据"
+  },
+  "sha256": "6d464b352d0f25d5b6b5b61bf2d0c4def1faf1cdec54580db0504327acced05b"
+}

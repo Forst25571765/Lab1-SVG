@@ -1,0 +1,24 @@
+# 在项目根目录执行；先创建 tmp 目录。下面两条失败命令用于验收错误和历史边界。
+help
+init 800 600
+create g flowchart
+create g node1 in flowchart
+create rect start 120 100 160 60 #4a90d9 in node1
+create text start-label 155 135 "开始" in node1
+create g node2 in flowchart
+create rect process 520 100 160 60 #f5a623 in node2
+create text process-label 545 135 "处理数据" in node2
+create line arrow1 280 130 520 130 black in flowchart
+move node2 0 100
+undo
+redo
+# 预期：非法负宽度被拒绝，process 仍保持 width=160。
+set process width -1
+show process
+save tmp/final-flowchart.svg
+# 预期：成功保存建立历史边界，undo 被拒绝。
+undo
+read tmp/final-flowchart.svg
+show process-label
+canvas
+tree
